@@ -1,4 +1,5 @@
 {
+  "deno.path": "/Users/amrendravikramsingh/.deno/bin/deno",
   "deno.enablePaths": ["supabase/functions"],
   "deno.lint": true,
   "deno.unstable": [
