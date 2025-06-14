@@ -486,7 +486,7 @@ export default function AssetApprovalSection({
                     <div className="flex items-center gap-2">
                       <DollarSign className="w-4 h-4 text-green-600" />
                       <span className="text-gray-700">
-                        ${asset.value.toLocaleString()}
+                        ${asset.original_value?.toLocaleString() || "N/A"}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -555,7 +555,9 @@ export default function AssetApprovalSection({
                         Estimated Value
                       </label>
                       <p className="text-gray-900 font-medium">
-                        ${selectedAsset.value.toLocaleString()}
+                        $
+                        {selectedAsset.original_value?.toLocaleString() ||
+                          "N/A"}
                       </p>
                     </div>
                     <div>
