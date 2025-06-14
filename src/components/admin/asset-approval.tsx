@@ -108,55 +108,55 @@ export default function AssetApprovalSection({
     {
       id: "ASSET-001",
       name: "Manhattan Commercial Property",
-      type: "Real Estate",
-      value: 2500000,
-      submittedBy: "0x742d35cc6cbf4532b4661e5f5e2c2d1b5a8f1234",
-      submittedDate: "2024-01-15",
-      status: "pending",
+      asset_type: "Real Estate",
+      original_value: 2500000,
+      user_id: "0x742d35cc6cbf4532b4661e5f5e2c2d1b5a8f1234",
+      created_at: "2025-01-15",
+      verification_status: "pending",
       location: "New York, NY",
       description:
         "Prime commercial real estate in Manhattan's financial district",
+      blockchain: "ethereum",
       documents: ["property_deed.pdf", "valuation_report.pdf", "insurance.pdf"],
       riskScore: 3.2,
-      verificationStatus: "Documents Verified",
       collateralRatio: 75,
     },
     {
       id: "ASSET-002",
       name: "Vintage Wine Collection",
-      type: "Collectibles",
-      value: 150000,
-      submittedBy: "0x1234567890abcdef1234567890abcdef12345678",
-      submittedDate: "2024-01-14",
-      status: "under-review",
+      asset_type: "Collectibles",
+      original_value: 150000,
+      user_id: "0x1234567890abcdef1234567890abcdef12345678",
+      created_at: "2025-01-14",
+      verification_status: "under-review",
       location: "Bordeaux, France",
       description: "Rare vintage wine collection from prestigious vineyards",
+      blockchain: "polygon",
       documents: [
         "wine_inventory.pdf",
         "authentication.pdf",
         "storage_proof.pdf",
       ],
       riskScore: 4.1,
-      verificationStatus: "Authentication Pending",
       collateralRatio: 60,
     },
     {
       id: "ASSET-003",
       name: "Tesla Model S Collection",
-      type: "Vehicles",
-      value: 320000,
-      submittedBy: "0xabcdef1234567890abcdef1234567890abcdef12",
-      submittedDate: "2024-01-13",
-      status: "pending",
+      asset_type: "Vehicles",
+      original_value: 320000,
+      user_id: "0xabcdef1234567890abcdef1234567890abcdef12",
+      created_at: "2025-01-13",
+      verification_status: "pending",
       location: "California, USA",
       description: "Collection of Tesla Model S vehicles in mint condition",
+      blockchain: "arbitrum",
       documents: [
         "vehicle_titles.pdf",
         "inspection_report.pdf",
         "insurance.pdf",
       ],
       riskScore: 2.8,
-      verificationStatus: "Initial Review",
       collateralRatio: 70,
     },
   ];
@@ -210,14 +210,12 @@ export default function AssetApprovalSection({
             if (asset.ipfs_hash) {
               await ipfsService.updateAssetMetadata(asset.ipfs_hash, {
                 properties: {
-                  ...asset,
                   verification_status: "approved",
-                  approved_at: new Date().toISOString(),
                   token_id: mintResult.tokenId.toString(),
                   contract_address: web3Service.getContractAddress(
                     asset.blockchain
                   ),
-                },
+                } as any,
               });
             }
           } catch (web3Error: any) {
@@ -258,12 +256,10 @@ export default function AssetApprovalSection({
         if (asset.ipfs_hash) {
           await ipfsService.updateAssetMetadata(asset.ipfs_hash, {
             properties: {
-              ...asset,
               verification_status: "rejected",
-              rejected_at: new Date().toISOString(),
               rejection_reason:
                 reviewComment || "Asset did not meet verification requirements",
-            },
+            } as any,
           });
         }
       }
@@ -475,10 +471,14 @@ export default function AssetApprovalSection({
                       <h3 className="font-semibold text-gray-900 text-lg">
                         {asset.name}
                       </h3>
-                      <p className="text-gray-600 text-sm">{asset.type}</p>
+                      <p className="text-gray-600 text-sm">
+                        {asset.asset_type}
+                      </p>
                     </div>
-                    <Badge className={getStatusColor(asset.status)}>
-                      {asset.status}
+                    <Badge
+                      className={getStatusColor(asset.verification_status)}
+                    >
+                      {asset.verification_status}
                     </Badge>
                   </div>
 
@@ -498,16 +498,16 @@ export default function AssetApprovalSection({
                   <div className="flex items-center justify-between mt-3">
                     <div className="flex items-center gap-2">
                       <AlertTriangle
-                        className={`w-4 h-4 ${getRiskColor(asset.riskScore)}`}
+                        className={`w-4 w-4 ${getRiskColor(asset.riskScore || 0)}`}
                       />
                       <span
-                        className={`text-sm font-medium ${getRiskColor(asset.riskScore)}`}
+                        className={`text-sm font-medium ${getRiskColor(asset.riskScore || 0)}`}
                       >
-                        Risk: {asset.riskScore}/5
+                        Risk: {asset.riskScore || 0}/5
                       </span>
                     </div>
                     <span className="text-xs text-gray-500">
-                      {asset.submittedDate}
+                      {asset.created_at}
                     </span>
                   </div>
                 </CardContent>
@@ -547,7 +547,7 @@ export default function AssetApprovalSection({
                         Asset Type
                       </label>
                       <p className="text-gray-900 font-medium">
-                        {selectedAsset.type}
+                        {selectedAsset.asset_type}
                       </p>
                     </div>
                     <div>
@@ -583,8 +583,8 @@ export default function AssetApprovalSection({
                       Submitted By
                     </label>
                     <p className="text-gray-900 font-medium font-mono text-sm">
-                      {selectedAsset.submittedBy.slice(0, 6)}...
-                      {selectedAsset.submittedBy.slice(-4)}
+                      {selectedAsset.user_id.slice(0, 6)}...
+                      {selectedAsset.user_id.slice(-4)}
                     </p>
                   </div>
                 </div>
@@ -594,7 +594,7 @@ export default function AssetApprovalSection({
                   <CheckCircle className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-blue-800">
                     <strong>Verification Status:</strong>{" "}
-                    {selectedAsset.verificationStatus}
+                    {selectedAsset.verification_status}
                   </AlertDescription>
                 </Alert>
 
@@ -606,9 +606,9 @@ export default function AssetApprovalSection({
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Risk Score</span>
                     <span
-                      className={`font-bold ${getRiskColor(selectedAsset.riskScore)}`}
+                      className={`font-bold ${getRiskColor(selectedAsset.riskScore || 0)}`}
                     >
-                      {selectedAsset.riskScore}/5.0
+                      {selectedAsset.riskScore || 0}/5.0
                     </span>
                   </div>
                 </div>
@@ -619,7 +619,7 @@ export default function AssetApprovalSection({
                     Supporting Documents
                   </h4>
                   <div className="space-y-2">
-                    {selectedAsset.documents.map((doc, index) => (
+                    {selectedAsset.documents?.map((doc, index) => (
                       <div
                         key={index}
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"

@@ -242,7 +242,12 @@ export default function ProfilePage() {
             toast.success("Profile created successfully!");
           }
         } else if (fetchError) {
-          console.error("Error fetching profile:", fetchError);
+          console.error("Error fetching profile:", {
+            error: fetchError,
+            message: fetchError.message || "Unknown error",
+            code: fetchError.code || "No error code",
+            details: fetchError.details || "No additional details",
+          });
           console.log("Database table might not exist, using fallback profile");
 
           // Create a fallback profile from auth user data

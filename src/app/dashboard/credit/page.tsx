@@ -403,7 +403,7 @@ export default function CreditScorePage() {
           <div className="mt-6 flex items-center justify-center gap-6 text-sm text-gray-500">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              Expected Q2 2024
+              Expected Q2 2025
             </div>
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4" />
@@ -508,7 +508,7 @@ export default function CreditScorePage() {
               <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
               <div>
                 <p className="font-medium text-gray-900">
-                  Q1 2024 - Foundation
+                  Q1 2025 - Foundation
                 </p>
                 <p className="text-sm text-gray-600">
                   Basic credit scoring algorithm and data collection
@@ -519,7 +519,7 @@ export default function CreditScorePage() {
               <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
               <div>
                 <p className="font-medium text-gray-900">
-                  Q2 2024 - Beta Launch
+                  Q2 2025 - Beta Launch
                 </p>
                 <p className="text-sm text-gray-600">
                   Limited beta with select users and basic features
@@ -530,7 +530,7 @@ export default function CreditScorePage() {
               <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
               <div>
                 <p className="font-medium text-gray-900">
-                  Q3 2024 - Full Release
+                  Q3 2025 - Full Release
                 </p>
                 <p className="text-sm text-gray-600">
                   Complete credit scoring system with all features

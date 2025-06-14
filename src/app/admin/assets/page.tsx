@@ -87,7 +87,7 @@ export default function AssetManagement() {
             asset_type: "Real Estate",
             original_value: 850000,
             user_id: "0x742d35Cc6634C0532925a3b8D4C9db96590c6C8b",
-            created_at: "2024-01-15T10:30:00Z",
+            created_at: "2025-01-15T10:30:00Z",
             verification_status: "pending",
             location: "New York, NY",
             description: "Modern 2-bedroom apartment in downtown Manhattan",
@@ -96,7 +96,7 @@ export default function AssetManagement() {
             riskScore: 2,
             collateralRatio: 75,
             submittedBy: "0x742d35Cc6634C0532925a3b8D4C9db96590c6C8b",
-            submittedDate: "Jan 15, 2024",
+            submittedDate: "Jan 15, 2025",
           },
           {
             id: "2",
@@ -104,7 +104,7 @@ export default function AssetManagement() {
             asset_type: "Commercial Real Estate",
             original_value: 2500000,
             user_id: "0x8ba1f109551bD432803012645Hac136c5c8b8b8b",
-            created_at: "2024-01-14T14:20:00Z",
+            created_at: "2025-01-14T14:20:00Z",
             verification_status: "under-review",
             location: "Los Angeles, CA",
             description: "5-story office building with retail ground floor",
@@ -117,7 +117,7 @@ export default function AssetManagement() {
             riskScore: 3,
             collateralRatio: 70,
             submittedBy: "0x8ba1f109551bD432803012645Hac136c5c8b8b8b",
-            submittedDate: "Jan 14, 2024",
+            submittedDate: "Jan 14, 2025",
           },
           {
             id: "3",
@@ -125,7 +125,7 @@ export default function AssetManagement() {
             asset_type: "Collectibles",
             original_value: 125000,
             user_id: "0xa39643CF2F0B78107Ed786c8156C6de492Eec3c",
-            created_at: "2024-01-13T09:15:00Z",
+            created_at: "2025-01-13T09:15:00Z",
             verification_status: "approved",
             location: "Napa Valley, CA",
             description: "Rare vintage wine collection from 1990-2010",
@@ -136,7 +136,7 @@ export default function AssetManagement() {
             riskScore: 4,
             collateralRatio: 60,
             submittedBy: "0xa39643CF2F0B78107Ed786c8156C6de492Eec3c",
-            submittedDate: "Jan 13, 2024",
+            submittedDate: "Jan 13, 2025",
           },
         ]);
       }

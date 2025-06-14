@@ -172,7 +172,7 @@ export default function EmergencyControlSection({
       title: "DDoS Attack Detected",
       severity: "high",
       status: "resolved",
-      timestamp: "2024-01-15 14:30:00",
+      timestamp: "2025-01-15 14:30:00",
       duration: "12 minutes",
       description: "Automated DDoS protection triggered, attack mitigated",
       actions: [
@@ -186,7 +186,7 @@ export default function EmergencyControlSection({
       title: "Database Connection Spike",
       severity: "medium",
       status: "monitored",
-      timestamp: "2024-01-14 09:15:00",
+      timestamp: "2025-01-14 09:15:00",
       duration: "5 minutes",
       description: "Unusual database connection spike detected and handled",
       actions: ["Connection pooling adjusted", "Query optimization applied"],
@@ -196,7 +196,7 @@ export default function EmergencyControlSection({
       title: "Smart Contract Anomaly",
       severity: "low",
       status: "resolved",
-      timestamp: "2024-01-13 16:45:00",
+      timestamp: "2025-01-13 16:45:00",
       duration: "8 minutes",
       description: "Unusual transaction pattern detected in vault contract",
       actions: [
@@ -226,7 +226,7 @@ export default function EmergencyControlSection({
   };
 
   const executeEmergencyProtocol = () => {
-    if (confirmationCode === "EMERGENCY-2024") {
+    if (confirmationCode === "EMERGENCY-2025") {
       // Execute the emergency protocol
       alert(`Emergency protocol "${selectedProtocol}" executed successfully!`);
       setSelectedProtocol(null);
@@ -442,7 +442,7 @@ export default function EmergencyControlSection({
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Enter confirmation code:{" "}
-                    <span className="font-mono">EMERGENCY-2024</span>
+                    <span className="font-mono">EMERGENCY-2025</span>
                   </label>
                   <Input
                     type="text"
@@ -456,7 +456,7 @@ export default function EmergencyControlSection({
                   <Button
                     onClick={executeEmergencyProtocol}
                     className="bg-red-600 hover:bg-red-700 text-white"
-                    disabled={confirmationCode !== "EMERGENCY-2024"}
+                    disabled={confirmationCode !== "EMERGENCY-2025"}
                   >
                     Execute Protocol
                   </Button>

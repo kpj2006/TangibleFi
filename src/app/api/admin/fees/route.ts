@@ -9,7 +9,7 @@ const mockFees = [
     value: 2.5,
     blockchain: "ethereum",
     isActive: true,
-    lastUpdated: "2024-01-15T10:30:00Z",
+    lastUpdated: "2025-01-15T10:30:00Z",
     description: "Standard platform fee for asset tokenization",
   },
   {
@@ -19,7 +19,7 @@ const mockFees = [
     value: 0.001,
     blockchain: "ethereum",
     isActive: true,
-    lastUpdated: "2024-01-14T14:20:00Z",
+    lastUpdated: "2025-01-14T14:20:00Z",
     description: "Fixed fee per transaction",
   },
   {
@@ -29,7 +29,7 @@ const mockFees = [
     value: 1.5,
     blockchain: "polygon",
     isActive: true,
-    lastUpdated: "2024-01-13T09:15:00Z",
+    lastUpdated: "2025-01-13T09:15:00Z",
     description: "Reduced platform fee for Polygon network",
   },
   {
@@ -41,7 +41,7 @@ const mockFees = [
     maxAmount: 50000,
     blockchain: "ethereum",
     isActive: false,
-    lastUpdated: "2024-01-12T16:45:00Z",
+    lastUpdated: "2025-01-12T16:45:00Z",
     description: "Premium service fee with limits",
   },
   {
@@ -51,7 +51,7 @@ const mockFees = [
     value: 0.0005,
     blockchain: "arbitrum",
     isActive: true,
-    lastUpdated: "2024-01-11T11:20:00Z",
+    lastUpdated: "2025-01-11T11:20:00Z",
     description: "Gas fee for Arbitrum transactions",
   },
 ];

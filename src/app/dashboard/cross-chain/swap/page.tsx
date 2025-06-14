@@ -33,15 +33,21 @@ import {
   Activity,
   TrendingUp,
   Coins,
+  RefreshCw,
+  Network,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "@/components/ui/use-toast";
+import EnhancedPageHeader, {
+  commonBadges,
+} from "@/components/enhanced-page-header";
 
 export default function SwapPage() {
   const router = useRouter();
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [swapping, setSwapping] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -72,41 +78,56 @@ export default function SwapPage() {
     loadData();
   }, [router]);
 
-  const handleSubmit = async (formData: FormData) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     if (!user) return;
 
+    setSwapping(true);
+    const formData = new FormData(e.currentTarget);
     const fromAssetId = formData.get("from_asset_id") as string;
     const toAssetSymbol = formData.get("to_asset_symbol") as string;
     const amount = parseFloat(formData.get("amount") as string);
     const slippage = formData.get("slippage") as string;
 
-    // Mock transaction - in reality, this would interact with DEX protocols
-    const transactionHash = "0x" + Math.random().toString(16).substring(2, 66);
+    try {
+      // Mock transaction - in reality, this would interact with DEX protocols
+      const transactionHash = "0x" + Math.random().toString(16).substring(2, 66);
 
-    // Here you would implement actual DEX interaction logic
-    console.log("Swapping assets:", {
-      fromAssetId,
-      toAssetSymbol,
-      amount,
-      slippage,
-      transactionHash,
-    });
+      // Simulate processing time
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-    toast({
-      title: "Swap Initiated",
-      description: "Your asset swap has been initiated.",
-    });
+      console.log("Swapping assets:", {
+        fromAssetId,
+        toAssetSymbol,
+        amount,
+        slippage,
+        transactionHash,
+      });
 
-    router.push("/dashboard/cross-chain?swapped=true");
+      toast({
+        title: "Swap Completed",
+        description: "Your asset swap has been completed successfully.",
+      });
+
+      router.push("/dashboard/cross-chain?swapped=true");
+    } catch (error) {
+      toast({
+        title: "Swap Failed",
+        description: "There was an error processing your swap. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSwapping(false);
+    }
   };
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <main className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 animate-fadeIn">
+        <div className="space-y-6">
           <div className="text-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading...</p>
+            <p className="mt-4 text-gray-600">Loading swap interface...</p>
           </div>
         </div>
       </main>
@@ -125,134 +146,152 @@ export default function SwapPage() {
   ];
 
   return (
-    <>
-      <main className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-          {/* Header */}
-          <div className="flex items-center gap-4 mb-8">
-            <Button variant="outline" size="sm" asChild className="shadow-sm">
+    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 animate-fadeIn">
+      <div className="space-y-6">
+        {/* Enhanced Header */}
+        <EnhancedPageHeader
+          title="Cross-Chain Asset Swap"
+          description="Exchange your assets at the best rates across multiple blockchain networks with minimal slippage and optimal routing"
+          badges={[
+            commonBadges.active,
+            {
+              text: "Best Rates",
+              variant: "outline",
+              icon: <TrendingUp className="h-3 w-3" />,
+              className: "text-emerald-700 border-emerald-200",
+            },
+            {
+              text: "Multi-Chain",
+              variant: "outline",
+              icon: <Network className="h-3 w-3" />,
+              className: "text-blue-700 border-blue-200",
+            },
+            {
+              text: "Instant Swap",
+              variant: "outline",
+              icon: <Zap className="h-3 w-3" />,
+              className: "text-purple-700 border-purple-200",
+            },
+          ]}
+          actions={
+            <Button
+              variant="outline"
+              asChild
+              className="border-blue-200 text-blue-700 hover:bg-blue-50 shadow-sm hover:shadow-md transition-all duration-200"
+            >
               <Link href="/dashboard/cross-chain">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Cross-Chain
+                Back to Hub
               </Link>
             </Button>
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent">
-                Swap Assets
-              </h1>
-              <p className="text-muted-foreground mt-2 text-lg">
-                Exchange your assets at the best rates across chains
-              </p>
-            </div>
-          </div>
+          }
+        />
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Form */}
-            <div className="lg:col-span-2">
-              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-                <CardHeader className="border-b border-gray-100">
-                  <CardTitle className="flex items-center gap-2 text-xl">
-                    <ArrowUpDown className="h-6 w-6 text-blue-600" />
-                    Exchange Details
-                  </CardTitle>
-                  <CardDescription className="text-base">
-                    Configure your asset swap
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-8">
-                  <form action={handleSubmit} className="space-y-8">
-                    {/* From Asset */}
-                    <div className="space-y-3">
-                      <Label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                        <DollarSign className="h-4 w-4" />
-                        From Asset *
-                      </Label>
-                      <div className="border border-gray-200 bg-gray-50/30 rounded-lg p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                          <div className="space-y-2">
-                            <Label className="text-sm text-muted-foreground">
-                              Asset
-                            </Label>
-                            <Select name="from_asset_id" required>
-                              <SelectTrigger className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20">
-                                <SelectValue placeholder="Select asset to swap" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {positions?.map((position) => (
-                                  <SelectItem
-                                    key={position.id}
-                                    value={position.id}
-                                  >
-                                    <div className="flex items-center justify-between w-full">
-                                      <span className="font-medium">
-                                        {position.asset_symbol}
-                                      </span>
-                                      <span className="text-sm text-muted-foreground ml-4">
-                                        {position.balance.toFixed(4)}
-                                      </span>
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-sm text-muted-foreground">
-                              Amount
-                            </Label>
-                            <Input
-                              name="amount"
-                              type="number"
-                              step="0.000001"
-                              min="0"
-                              placeholder="0.0"
-                              required
-                              className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20"
-                            />
+        {/* Content Section */}
+        <div className="w-full px-6">
+          <div className="w-full space-y-6">
+            {/* Swap Interface */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-slideUp">
+              {/* Main Form */}
+              <div className="lg:col-span-2">
+                <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
+                  <CardHeader className="border-b border-gray-100">
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <ArrowUpDown className="h-6 w-6 text-blue-600" />
+                      Exchange Details
+                      <Badge
+                        variant="outline"
+                        className="bg-emerald-50 text-emerald-700 border-emerald-200 ml-2"
+                      >
+                        LIVE
+                      </Badge>
+                    </CardTitle>
+                    <CardDescription className="text-base">
+                      Configure your asset swap with optimal routing
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-8">
+                    <form onSubmit={handleSubmit} className="space-y-8">
+                      {/* From Asset */}
+                      <div className="space-y-4">
+                        <Label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                          <DollarSign className="h-4 w-4" />
+                          From Asset *
+                        </Label>
+                        <div className="border border-gray-200 bg-gradient-to-br from-gray-50/50 to-blue-50/30 rounded-xl p-6 shadow-sm">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div className="space-y-2">
+                              <Label className="text-sm text-gray-600">
+                                Asset
+                              </Label>
+                              <Select name="from_asset_id" required>
+                                <SelectTrigger className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20">
+                                  <SelectValue placeholder="Select asset to swap" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {positions?.map((position) => (
+                                    <SelectItem
+                                      key={position.id}
+                                      value={position.id}
+                                    >
+                                      <div className="flex items-center justify-between w-full">
+                                        <span className="font-medium">
+                                          {position.asset_symbol}
+                                        </span>
+                                        <span className="text-sm text-gray-500 ml-4">
+                                          {position.balance.toFixed(4)}
+                                        </span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm text-gray-600">
+                                Amount
+                              </Label>
+                              <Input
+                                name="amount"
+                                type="number"
+                                step="0.0001"
+                                placeholder="0.00"
+                                required
+                                className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20"
+                              />
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            Available Balance:
-                          </span>
-                          <span className="font-medium">15,000.0000 USDC</span>
+                      </div>
+
+                      {/* Swap Direction Indicator */}
+                      <div className="flex justify-center">
+                        <div className="p-3 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg">
+                          <ArrowUpDown className="h-6 w-6 text-white" />
                         </div>
                       </div>
-                    </div>
 
-                    {/* Swap Direction Indicator */}
-                    <div className="flex justify-center">
-                      <div className="w-12 h-12 border border-gray-200 bg-white rounded-full flex items-center justify-center shadow-sm">
-                        <ArrowUpDown className="h-6 w-6 text-gray-600" />
-                      </div>
-                    </div>
-
-                    {/* To Asset */}
-                    <div className="space-y-3">
-                      <Label className="text-sm font-semibold text-gray-700">
-                        To Asset *
-                      </Label>
-                      <div className="border border-gray-200 bg-gray-50/30 rounded-lg p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      {/* To Asset */}
+                      <div className="space-y-4">
+                        <Label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                          <Coins className="h-4 w-4" />
+                          To Asset *
+                        </Label>
+                        <div className="border border-gray-200 bg-gradient-to-br from-gray-50/50 to-purple-50/30 rounded-xl p-6 shadow-sm">
                           <div className="space-y-2">
-                            <Label className="text-sm text-muted-foreground">
-                              Asset
+                            <Label className="text-sm text-gray-600">
+                              Target Asset
                             </Label>
                             <Select name="to_asset_symbol" required>
                               <SelectTrigger className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20">
-                                <SelectValue placeholder="Select asset to receive" />
+                                <SelectValue placeholder="Select target asset" />
                               </SelectTrigger>
                               <SelectContent>
                                 {availableTokens.map((token) => (
-                                  <SelectItem
-                                    key={token.symbol}
-                                    value={token.symbol}
-                                  >
-                                    <div className="flex items-center justify-between w-full">
-                                      <span className="font-medium">
-                                        {token.symbol}
-                                      </span>
-                                      <span className="text-sm text-muted-foreground ml-4">
+                                  <SelectItem key={token.symbol} value={token.symbol}>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium">{token.symbol}</span>
+                                      <span className="text-sm text-gray-500">
                                         {token.name}
                                       </span>
                                     </div>
@@ -261,228 +300,139 @@ export default function SwapPage() {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="space-y-2">
-                            <Label className="text-sm text-muted-foreground">
-                              You'll receive
-                            </Label>
-                            <Input
-                              type="number"
-                              placeholder="0.0"
-                              disabled
-                              className="h-12 border-gray-200 bg-gray-100"
-                              value="0.045"
-                            />
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            Exchange Rate:
-                          </span>
-                          <span className="font-medium">
-                            1 USDC = 0.000045 ETH
-                          </span>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Swap Settings */}
-                    <div className="space-y-3">
-                      <Label className="text-sm font-semibold text-gray-700">
-                        Slippage Tolerance
-                      </Label>
-                      <Select name="slippage" defaultValue="0.5">
-                        <SelectTrigger className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0.1">0.1%</SelectItem>
-                          <SelectItem value="0.5">0.5%</SelectItem>
-                          <SelectItem value="1.0">1.0%</SelectItem>
-                          <SelectItem value="3.0">3.0%</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                      {/* Advanced Settings */}
+                      <div className="space-y-4">
+                        <Label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                          <Shield className="h-4 w-4" />
+                          Slippage Tolerance
+                        </Label>
+                        <div className="border border-gray-200 bg-gradient-to-br from-gray-50/50 to-emerald-50/30 rounded-xl p-6 shadow-sm">
+                          <Select name="slippage" defaultValue="0.5">
+                            <SelectTrigger className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0.1">0.1% (Low Risk)</SelectItem>
+                              <SelectItem value="0.5">0.5% (Recommended)</SelectItem>
+                              <SelectItem value="1.0">1.0% (High Liquidity)</SelectItem>
+                              <SelectItem value="3.0">3.0% (Maximum)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
 
-                    <div className="border border-gray-200 bg-gray-50/30 rounded-lg p-6 space-y-3">
-                      <h3 className="font-semibold text-gray-900 mb-4">
-                        Swap Summary
-                      </h3>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Rate:</span>
-                        <span className="font-medium">
-                          1 USDC = 0.000045 ETH
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          Price Impact:
-                        </span>
-                        <span className="font-medium text-emerald-600">
-                          {"<0.01%"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          Network Fee:
-                        </span>
-                        <span className="font-medium">~$15.50</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          Estimated Time:
-                        </span>
-                        <span className="font-medium">30 seconds</span>
-                      </div>
-                    </div>
-
-                    <div className="border-t border-gray-200 pt-8 flex gap-4">
+                      {/* Submit Button */}
                       <Button
                         type="submit"
-                        className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+                        disabled={swapping}
+                        className="w-full h-14 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                       >
-                        <ArrowUpDown className="h-4 w-4 mr-2" />
-                        Execute Swap
+                        {swapping ? (
+                          <>
+                            <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                            Processing Swap...
+                          </>
+                        ) : (
+                          <>
+                            <ArrowUpDown className="h-5 w-5 mr-2" />
+                            Execute Swap
+                          </>
+                        )}
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-12 px-8"
-                        asChild
-                      >
-                        <Link href="/dashboard/cross-chain">Cancel</Link>
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              </div>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Market Info */}
-              <Card className="border border-blue-200 shadow-lg bg-gradient-to-br from-blue-50/50 to-purple-50/50">
-                <CardHeader className="border-b border-blue-200">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <TrendingUp className="h-5 w-5 text-blue-600" />
-                    Market Info
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">ETH Price:</span>
-                      <span className="font-medium">$2,234.56</span>
+              {/* Sidebar Info */}
+              <div className="space-y-6">
+                {/* Swap Summary */}
+                <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
+                  <CardHeader className="border-b border-gray-100">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Activity className="h-5 w-5 text-emerald-600" />
+                      Swap Summary
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Exchange Rate</span>
+                      <span className="font-medium text-gray-900">1:1.0234</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">24h Change:</span>
-                      <span className="font-medium text-emerald-600">
-                        +2.45%
-                      </span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Network Fee</span>
+                      <span className="font-medium text-gray-900">~$2.50</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Liquidity:</span>
-                      <span className="font-medium">$45.2M</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Platform Fee</span>
+                      <span className="font-medium text-gray-900">0.25%</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        Volume (24h):
-                      </span>
-                      <span className="font-medium">$12.8M</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Estimated Time</span>
+                      <span className="font-medium text-gray-900">~30 seconds</span>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                    <div className="border-t pt-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-semibold text-gray-900">You'll Receive</span>
+                        <span className="font-bold text-emerald-600">~0.0000 TOKEN</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-              {/* Best Practices */}
-              <Card className="border border-emerald-200 shadow-lg bg-gradient-to-br from-emerald-50/50 to-blue-50/50">
-                <CardHeader className="border-b border-emerald-200">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <CheckCircle className="h-5 w-5 text-emerald-600" />
-                    Best Practices
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <ul className="space-y-3 text-sm text-gray-600">
-                    <li className="flex items-start gap-3">
-                      <div className="w-2 h-2 bg-emerald-600 rounded-full mt-2 flex-shrink-0" />
-                      <span>Check market conditions before large swaps</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <div className="w-2 h-2 bg-emerald-600 rounded-full mt-2 flex-shrink-0" />
-                      <span>Consider slippage for volatile assets</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <div className="w-2 h-2 bg-emerald-600 rounded-full mt-2 flex-shrink-0" />
-                      <span>Monitor gas fees during high congestion</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <div className="w-2 h-2 bg-emerald-600 rounded-full mt-2 flex-shrink-0" />
-                      <span>Start with smaller amounts for testing</span>
-                    </li>
-                  </ul>
-                </CardContent>
-              </Card>
+                {/* Market Info */}
+                <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
+                  <CardHeader className="border-b border-gray-100">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <TrendingUp className="h-5 w-5 text-blue-600" />
+                      Market Info
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">24h Volume</span>
+                      <span className="font-medium text-gray-900">$2.4M</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Liquidity</span>
+                      <span className="font-medium text-emerald-600">High</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Price Impact</span>
+                      <span className="font-medium text-gray-900">{"< 0.01%"}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Route</span>
+                      <span className="font-medium text-blue-600">Optimal</span>
+                    </div>
+                  </CardContent>
+                </Card>
 
-              {/* Speed & Efficiency */}
-              <Card className="border border-purple-200 shadow-lg bg-gradient-to-br from-purple-50/50 to-pink-50/50">
-                <CardHeader className="border-b border-purple-200">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Zap className="h-5 w-5 text-purple-600" />
-                    Speed & Efficiency
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <Clock className="h-4 w-4 text-blue-600" />
+                {/* Security Notice */}
+                <Card className="border border-emerald-200 shadow-lg bg-gradient-to-br from-emerald-50/50 to-green-50/30 backdrop-blur-sm">
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-3">
+                      <Shield className="h-5 w-5 text-emerald-600 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="font-medium text-sm">Fast Execution</p>
-                        <p className="text-xs text-muted-foreground">
-                          Swaps in under 30 seconds
+                        <h3 className="font-semibold text-emerald-900 mb-1">
+                          Secure Swapping
+                        </h3>
+                        <p className="text-sm text-emerald-700">
+                          All swaps are executed through audited smart contracts with
+                          maximum security protocols.
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <DollarSign className="h-4 w-4 text-emerald-600" />
-                      <div>
-                        <p className="font-medium text-sm">Optimal Pricing</p>
-                        <p className="text-xs text-muted-foreground">
-                          Best rates across DEXs
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="h-4 w-4 text-purple-600" />
-                      <div>
-                        <p className="font-medium text-sm">MEV Protection</p>
-                        <p className="text-xs text-muted-foreground">
-                          Protected from front-running
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Warning */}
-              <Card className="border border-yellow-200 shadow-lg bg-gradient-to-br from-yellow-50/50 to-orange-50/50">
-                <CardHeader className="border-b border-yellow-200">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                    Important
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    Cryptocurrency swaps are irreversible. Always double-check
-                    the amounts and assets before confirming.
-                  </p>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         </div>
-      </main>
-    </>
+      </div>
+    </main>
   );
 }

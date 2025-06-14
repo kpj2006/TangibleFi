@@ -37,7 +37,7 @@ export default function FeeManagementSection({
       revenue: "$14.8K",
       description: "Annual fee for vault management services",
       appliesTo: "All vaults",
-      lastUpdated: "2024-01-15",
+      lastUpdated: "2025-01-15",
       status: "active",
     },
     {
@@ -48,7 +48,7 @@ export default function FeeManagementSection({
       revenue: "$85.2K",
       description: "Fee on vault performance above benchmark",
       appliesTo: "Premium vaults",
-      lastUpdated: "2024-01-12",
+      lastUpdated: "2025-01-12",
       status: "active",
     },
     {
@@ -59,7 +59,7 @@ export default function FeeManagementSection({
       revenue: "$12.4K",
       description: "Fee for early withdrawal from vaults",
       appliesTo: "Early withdrawals",
-      lastUpdated: "2024-01-10",
+      lastUpdated: "2025-01-10",
       status: "active",
     },
     {
@@ -70,7 +70,7 @@ export default function FeeManagementSection({
       revenue: "$156.8K",
       description: "Fee for asset tokenization process",
       appliesTo: "New assets",
-      lastUpdated: "2024-01-08",
+      lastUpdated: "2025-01-08",
       status: "active",
     },
   ];

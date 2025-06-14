@@ -225,7 +225,7 @@ export default function LoanCalculatorPage() {
               <div className="mt-6 flex items-center justify-center gap-6 text-sm text-blue-100">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
-                  Expected Q2 2024
+                  Expected Q2 2025
                 </div>
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4" />
