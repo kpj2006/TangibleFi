@@ -35,7 +35,7 @@ import {
   Coins,
   RefreshCw,
   Network,
-  Bridge,
+  GitBranch as Bridge,
   Globe,
 } from "lucide-react";
 import Link from "next/link";
@@ -58,9 +58,9 @@ interface BridgeNetwork {
 
 export default function BridgePage() {
   const router = useRouter();
-  const [positions, setPositions] = useState([]);
+  const [positions, setPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<any>(null);
   const [bridging, setBridging] = useState(false);
   const [selectedFromNetwork, setSelectedFromNetwork] = useState<string>("");
   const [selectedToNetwork, setSelectedToNetwork] = useState<string>("");
@@ -174,10 +174,11 @@ export default function BridgePage() {
 
     try {
       // Mock transaction - in reality, this would interact with bridge protocols
-      const transactionHash = "0x" + Math.random().toString(16).substring(2, 66);
+      const transactionHash =
+        "0x" + Math.random().toString(16).substring(2, 66);
 
       // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
 
       console.log("Bridging assets:", {
         fromNetwork,
@@ -196,7 +197,8 @@ export default function BridgePage() {
     } catch (error) {
       toast({
         title: "Bridge Failed",
-        description: "There was an error processing your bridge transaction. Please try again.",
+        description:
+          "There was an error processing your bridge transaction. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -207,13 +209,33 @@ export default function BridgePage() {
   const getNetworkStatus = (status: string) => {
     switch (status) {
       case "active":
-        return { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200", text: "Active" };
+        return {
+          color: "text-emerald-600",
+          bg: "bg-emerald-50",
+          border: "border-emerald-200",
+          text: "Active",
+        };
       case "congested":
-        return { color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-200", text: "Congested" };
+        return {
+          color: "text-yellow-600",
+          bg: "bg-yellow-50",
+          border: "border-yellow-200",
+          text: "Congested",
+        };
       case "maintenance":
-        return { color: "text-red-600", bg: "bg-red-50", border: "border-red-200", text: "Maintenance" };
+        return {
+          color: "text-red-600",
+          bg: "bg-red-50",
+          border: "border-red-200",
+          text: "Maintenance",
+        };
       default:
-        return { color: "text-gray-600", bg: "bg-gray-50", border: "border-gray-200", text: "Unknown" };
+        return {
+          color: "text-gray-600",
+          bg: "bg-gray-50",
+          border: "border-gray-200",
+          text: "Unknown",
+        };
     }
   };
 
@@ -221,17 +243,218 @@ export default function BridgePage() {
     return (
       <main className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 animate-fadeIn">
         <div className="space-y-6">
-          <div className="text-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading bridge interface...</p>
+          {/* Enhanced Loading Header */}
+          <div className="w-full px-6 py-8">
+            <div className="flex items-center gap-4 mb-8 animate-pulse">
+              <div className="h-10 w-24 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg"></div>
+              <div>
+                <div className="h-8 w-72 bg-gradient-to-r from-blue-200 to-purple-200 rounded-lg mb-2"></div>
+                <div className="h-4 w-96 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Advanced Bridge Loading Animation */}
+          <div className="w-full px-6">
+            <div className="text-center py-12">
+              {/* Animated Bridge Visual */}
+              <div className="flex justify-center items-center mb-8">
+                <div className="relative flex items-center space-x-8">
+                  {/* Source Network */}
+                  <div className="relative">
+                    <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl animate-pulse shadow-2xl flex items-center justify-center">
+                      <span className="text-3xl">🔷</span>
+                    </div>
+                    <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 text-xs font-medium text-blue-600">
+                      Source
+                    </div>
+                  </div>
+
+                  {/* Bridge Animation */}
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-0.5 bg-gradient-to-r from-blue-500 to-transparent animate-pulse"></div>
+                    <div className="w-4 h-0.5 bg-gradient-to-r from-blue-400 to-purple-400 animate-pulse delay-100"></div>
+                    <div className="w-4 h-0.5 bg-gradient-to-r from-purple-400 to-emerald-400 animate-pulse delay-200"></div>
+                    <div className="w-4 h-0.5 bg-gradient-to-r from-emerald-400 to-transparent animate-pulse delay-300"></div>
+                  </div>
+
+                  {/* Destination Network */}
+                  <div className="relative">
+                    <div className="w-20 h-20 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-2xl animate-pulse delay-500 shadow-2xl flex items-center justify-center">
+                      <span className="text-3xl">🟣</span>
+                    </div>
+                    <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 text-xs font-medium text-emerald-600">
+                      Destination
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rotating Bridge Icon */}
+              <div className="relative mb-6">
+                <div className="w-16 h-16 mx-auto">
+                  <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-500 border-r-purple-500 animate-spin"></div>
+                  <div className="absolute inset-2 rounded-full border-4 border-transparent border-b-emerald-500 border-l-blue-400 animate-spin animate-reverse"></div>
+                  <div className="absolute inset-4 flex items-center justify-center">
+                    <span className="text-2xl animate-bounce">🌉</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Loading Text */}
+              <div className="space-y-3">
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 bg-clip-text text-transparent">
+                  Initializing Bridge Interface
+                </h3>
+                <div className="flex justify-center items-center space-x-2">
+                  <p className="text-gray-600">
+                    Connecting to bridge protocols
+                  </p>
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce delay-100"></div>
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce delay-200"></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Network Status Indicators */}
+              <div className="mt-8 flex justify-center space-x-6">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm text-gray-600">Ethereum</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse delay-100"></div>
+                  <span className="text-sm text-gray-600">Polygon</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse delay-200"></div>
+                  <span className="text-sm text-gray-600">Arbitrum</span>
+                </div>
+              </div>
+
+              {/* Progress Steps */}
+              <div className="mt-8 max-w-lg mx-auto">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center animate-pulse">
+                      <span className="text-white text-sm">✓</span>
+                    </div>
+                    <span className="text-sm text-emerald-600 font-medium">
+                      Networks
+                    </span>
+                  </div>
+                  <div className="flex-1 h-0.5 bg-gradient-to-r from-emerald-500 to-blue-300 mx-4 animate-pulse"></div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center animate-pulse delay-300">
+                      <div className="w-3 h-3 bg-white rounded-full animate-bounce"></div>
+                    </div>
+                    <span className="text-sm text-blue-600 font-medium">
+                      Assets
+                    </span>
+                  </div>
+                  <div className="flex-1 h-0.5 bg-gray-300 mx-4"></div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                      <span className="text-gray-500 text-sm">3</span>
+                    </div>
+                    <span className="text-sm text-gray-500">Ready</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Skeleton Bridge Interface */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-pulse">
+              <div className="lg:col-span-2">
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8">
+                  <div className="h-6 bg-gradient-to-r from-blue-200 to-purple-200 rounded mb-6 w-1/3"></div>
+
+                  {/* From Network Skeleton */}
+                  <div className="mb-8">
+                    <div className="h-4 bg-gray-200 rounded mb-3 w-1/4"></div>
+                    <div className="border border-gray-200 bg-gradient-to-br from-gray-50/50 to-blue-50/30 rounded-xl p-6">
+                      <div className="h-12 bg-gray-200 rounded-xl"></div>
+                    </div>
+                  </div>
+
+                  {/* Asset Selection Skeleton */}
+                  <div className="mb-8">
+                    <div className="h-4 bg-gray-200 rounded mb-3 w-1/3"></div>
+                    <div className="border border-gray-200 bg-gradient-to-br from-gray-50/50 to-emerald-50/30 rounded-xl p-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="h-12 bg-gray-200 rounded-xl"></div>
+                        <div className="h-12 bg-gray-200 rounded-xl"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bridge Direction */}
+                  <div className="flex justify-center mb-8">
+                    <div className="w-12 h-12 bg-gradient-to-r from-blue-200 to-purple-200 rounded-full animate-pulse"></div>
+                  </div>
+
+                  {/* To Network Skeleton */}
+                  <div className="mb-8">
+                    <div className="h-4 bg-gray-200 rounded mb-3 w-1/4"></div>
+                    <div className="border border-gray-200 bg-gradient-to-br from-gray-50/50 to-purple-50/30 rounded-xl p-6">
+                      <div className="h-12 bg-gray-200 rounded-xl"></div>
+                    </div>
+                  </div>
+
+                  {/* Submit Button Skeleton */}
+                  <div className="h-14 bg-gradient-to-r from-blue-200 to-purple-200 rounded-xl animate-pulse"></div>
+                </div>
+              </div>
+
+              {/* Sidebar Skeletons */}
+              <div className="space-y-6">
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6">
+                  <div className="h-5 bg-emerald-200 rounded mb-4 w-2/3"></div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                    </div>
+                    <div className="flex justify-between">
+                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6">
+                  <div className="h-5 bg-blue-200 rounded mb-4 w-1/2"></div>
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className="flex justify-between items-center"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 bg-gray-200 rounded-full"></div>
+                          <div className="h-3 bg-gray-200 rounded w-16"></div>
+                        </div>
+                        <div className="h-5 bg-gray-200 rounded w-12"></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </main>
     );
   }
 
-  const selectedFromNetworkData = networks.find(n => n.id === selectedFromNetwork);
-  const selectedToNetworkData = networks.find(n => n.id === selectedToNetwork);
+  const selectedFromNetworkData = networks.find(
+    (n) => n.id === selectedFromNetwork
+  );
+  const selectedToNetworkData = networks.find(
+    (n) => n.id === selectedToNetwork
+  );
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 animate-fadeIn">
@@ -307,9 +530,9 @@ export default function BridgePage() {
                           From Network *
                         </Label>
                         <div className="border border-gray-200 bg-gradient-to-br from-gray-50/50 to-blue-50/30 rounded-xl p-6 shadow-sm">
-                          <Select 
-                            name="from_network" 
-                            required 
+                          <Select
+                            name="from_network"
+                            required
                             value={selectedFromNetwork}
                             onValueChange={setSelectedFromNetwork}
                           >
@@ -320,11 +543,18 @@ export default function BridgePage() {
                               {networks.map((network) => {
                                 const status = getNetworkStatus(network.status);
                                 return (
-                                  <SelectItem key={network.id} value={network.id}>
+                                  <SelectItem
+                                    key={network.id}
+                                    value={network.id}
+                                  >
                                     <div className="flex items-center justify-between w-full">
                                       <div className="flex items-center gap-2">
-                                        <span className="text-lg">{network.icon}</span>
-                                        <span className="font-medium">{network.name}</span>
+                                        <span className="text-lg">
+                                          {network.icon}
+                                        </span>
+                                        <span className="font-medium">
+                                          {network.name}
+                                        </span>
                                       </div>
                                       <Badge
                                         variant="outline"
@@ -407,8 +637,8 @@ export default function BridgePage() {
                           To Network *
                         </Label>
                         <div className="border border-gray-200 bg-gradient-to-br from-gray-50/50 to-purple-50/30 rounded-xl p-6 shadow-sm">
-                          <Select 
-                            name="to_network" 
+                          <Select
+                            name="to_network"
                             required
                             value={selectedToNetwork}
                             onValueChange={setSelectedToNetwork}
@@ -418,15 +648,27 @@ export default function BridgePage() {
                             </SelectTrigger>
                             <SelectContent>
                               {networks
-                                .filter(network => network.id !== selectedFromNetwork)
+                                .filter(
+                                  (network) =>
+                                    network.id !== selectedFromNetwork
+                                )
                                 .map((network) => {
-                                  const status = getNetworkStatus(network.status);
+                                  const status = getNetworkStatus(
+                                    network.status
+                                  );
                                   return (
-                                    <SelectItem key={network.id} value={network.id}>
+                                    <SelectItem
+                                      key={network.id}
+                                      value={network.id}
+                                    >
                                       <div className="flex items-center justify-between w-full">
                                         <div className="flex items-center gap-2">
-                                          <span className="text-lg">{network.icon}</span>
-                                          <span className="font-medium">{network.name}</span>
+                                          <span className="text-lg">
+                                            {network.icon}
+                                          </span>
+                                          <span className="font-medium">
+                                            {network.name}
+                                          </span>
                                         </div>
                                         <Badge
                                           variant="outline"
@@ -482,28 +724,39 @@ export default function BridgePage() {
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">Route</span>
                           <span className="font-medium text-gray-900">
-                            {selectedFromNetworkData.name} → {selectedToNetworkData.name}
+                            {selectedFromNetworkData.name} →{" "}
+                            {selectedToNetworkData.name}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">Bridge Fee</span>
+                          <span className="text-sm text-gray-600">
+                            Bridge Fee
+                          </span>
                           <span className="font-medium text-gray-900">
-                            {selectedToNetworkData.bridgeFee} {selectedToNetworkData.gasToken}
+                            {selectedToNetworkData.bridgeFee}{" "}
+                            {selectedToNetworkData.gasToken}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">Estimated Time</span>
+                          <span className="text-sm text-gray-600">
+                            Estimated Time
+                          </span>
                           <span className="font-medium text-gray-900">
                             {selectedToNetworkData.estimatedTime}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">Network Status</span>
+                          <span className="text-sm text-gray-600">
+                            Network Status
+                          </span>
                           <Badge
                             variant="outline"
                             className={`${getNetworkStatus(selectedToNetworkData.status).color} ${getNetworkStatus(selectedToNetworkData.status).bg} ${getNetworkStatus(selectedToNetworkData.status).border}`}
                           >
-                            {getNetworkStatus(selectedToNetworkData.status).text}
+                            {
+                              getNetworkStatus(selectedToNetworkData.status)
+                                .text
+                            }
                           </Badge>
                         </div>
                       </>
@@ -529,10 +782,15 @@ export default function BridgePage() {
                     {networks.slice(0, 4).map((network) => {
                       const status = getNetworkStatus(network.status);
                       return (
-                        <div key={network.id} className="flex items-center justify-between">
+                        <div
+                          key={network.id}
+                          className="flex items-center justify-between"
+                        >
                           <div className="flex items-center gap-2">
                             <span className="text-lg">{network.icon}</span>
-                            <span className="font-medium text-sm">{network.name}</span>
+                            <span className="font-medium text-sm">
+                              {network.name}
+                            </span>
                           </div>
                           <Badge
                             variant="outline"
@@ -556,8 +814,9 @@ export default function BridgePage() {
                           Secure Bridging
                         </h3>
                         <p className="text-sm text-emerald-700">
-                          All bridge transactions are secured by battle-tested protocols
-                          with multi-signature validation and time-lock mechanisms.
+                          All bridge transactions are secured by battle-tested
+                          protocols with multi-signature validation and
+                          time-lock mechanisms.
                         </p>
                       </div>
                     </div>
@@ -574,8 +833,9 @@ export default function BridgePage() {
                           Bridge Time Notice
                         </h3>
                         <p className="text-sm text-yellow-700">
-                          Cross-chain bridges can take 15-30 minutes to complete.
-                          Your assets will be locked during this process.
+                          Cross-chain bridges can take 15-30 minutes to
+                          complete. Your assets will be locked during this
+                          process.
                         </p>
                       </div>
                     </div>
@@ -588,4 +848,4 @@ export default function BridgePage() {
       </div>
     </main>
   );
-} 
+}

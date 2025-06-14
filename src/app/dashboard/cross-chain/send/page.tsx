@@ -4,38 +4,133 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { createClient } from "../../../../../supabase/client";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 // Dynamically import UI components
-const Card = dynamic(() => import("@/components/ui/card").then(mod => ({ default: mod.Card })), { ssr: false });
-const CardContent = dynamic(() => import("@/components/ui/card").then(mod => ({ default: mod.CardContent })), { ssr: false });
-const CardDescription = dynamic(() => import("@/components/ui/card").then(mod => ({ default: mod.CardDescription })), { ssr: false });
-const CardHeader = dynamic(() => import("@/components/ui/card").then(mod => ({ default: mod.CardHeader })), { ssr: false });
-const CardTitle = dynamic(() => import("@/components/ui/card").then(mod => ({ default: mod.CardTitle })), { ssr: false });
+const Card = dynamic(
+  () => import("@/components/ui/card").then((mod) => ({ default: mod.Card })),
+  { ssr: false }
+);
+const CardContent = dynamic(
+  () =>
+    import("@/components/ui/card").then((mod) => ({
+      default: mod.CardContent,
+    })),
+  { ssr: false }
+);
+const CardDescription = dynamic(
+  () =>
+    import("@/components/ui/card").then((mod) => ({
+      default: mod.CardDescription,
+    })),
+  { ssr: false }
+);
+const CardHeader = dynamic(
+  () =>
+    import("@/components/ui/card").then((mod) => ({ default: mod.CardHeader })),
+  { ssr: false }
+);
+const CardTitle = dynamic(
+  () =>
+    import("@/components/ui/card").then((mod) => ({ default: mod.CardTitle })),
+  { ssr: false }
+);
 
-const Button = dynamic(() => import("@/components/ui/button").then(mod => ({ default: mod.Button })), { ssr: false });
-const Input = dynamic(() => import("@/components/ui/input"), { ssr: false });
-const Label = dynamic(() => import("@/components/ui/label"), { ssr: false });
-const Select = dynamic(() => import("@/components/ui/select").then(mod => ({ default: mod.Select })), { ssr: false });
-const SelectContent = dynamic(() => import("@/components/ui/select").then(mod => ({ default: mod.SelectContent })), { ssr: false });
-const SelectItem = dynamic(() => import("@/components/ui/select").then(mod => ({ default: mod.SelectItem })), { ssr: false });
-const SelectTrigger = dynamic(() => import("@/components/ui/select").then(mod => ({ default: mod.SelectTrigger })), { ssr: false });
-const SelectValue = dynamic(() => import("@/components/ui/select").then(mod => ({ default: mod.SelectValue })), { ssr: false });
-const Badge = dynamic(() => import("@/components/ui/badge").then(mod => ({ default: mod.Badge })), { ssr: false });
+const Button = dynamic(
+  () =>
+    import("@/components/ui/button").then((mod) => ({ default: mod.Button })),
+  { ssr: false }
+);
+const Select = dynamic(
+  () =>
+    import("@/components/ui/select").then((mod) => ({ default: mod.Select })),
+  { ssr: false }
+);
+const SelectContent = dynamic(
+  () =>
+    import("@/components/ui/select").then((mod) => ({
+      default: mod.SelectContent,
+    })),
+  { ssr: false }
+);
+const SelectItem = dynamic(
+  () =>
+    import("@/components/ui/select").then((mod) => ({
+      default: mod.SelectItem,
+    })),
+  { ssr: false }
+);
+const SelectTrigger = dynamic(
+  () =>
+    import("@/components/ui/select").then((mod) => ({
+      default: mod.SelectTrigger,
+    })),
+  { ssr: false }
+);
+const SelectValue = dynamic(
+  () =>
+    import("@/components/ui/select").then((mod) => ({
+      default: mod.SelectValue,
+    })),
+  { ssr: false }
+);
+const Badge = dynamic(
+  () => import("@/components/ui/badge").then((mod) => ({ default: mod.Badge })),
+  { ssr: false }
+);
 
 // Dynamically import icons
 const Icons = {
-  ArrowLeft: dynamic(() => import("lucide-react").then(mod => ({ default: mod.ArrowLeft })), { ssr: false }),
-  Send: dynamic(() => import("lucide-react").then(mod => ({ default: mod.Send })), { ssr: false }),
-  Globe: dynamic(() => import("lucide-react").then(mod => ({ default: mod.Globe })), { ssr: false }),
-  DollarSign: dynamic(() => import("lucide-react").then(mod => ({ default: mod.DollarSign })), { ssr: false }),
-  Clock: dynamic(() => import("lucide-react").then(mod => ({ default: mod.Clock })), { ssr: false }),
-  Shield: dynamic(() => import("lucide-react").then(mod => ({ default: mod.Shield })), { ssr: false }),
-  CheckCircle: dynamic(() => import("lucide-react").then(mod => ({ default: mod.CheckCircle })), { ssr: false }),
-  AlertTriangle: dynamic(() => import("lucide-react").then(mod => ({ default: mod.AlertTriangle })), { ssr: false }),
-  ArrowRight: dynamic(() => import("lucide-react").then(mod => ({ default: mod.ArrowRight })), { ssr: false }),
-  Zap: dynamic(() => import("lucide-react").then(mod => ({ default: mod.Zap })), { ssr: false }),
-  Network: dynamic(() => import("lucide-react").then(mod => ({ default: mod.Network })), { ssr: false }),
-  Wallet: dynamic(() => import("lucide-react").then(mod => ({ default: mod.Wallet })), { ssr: false }),
+  ArrowLeft: dynamic(
+    () => import("lucide-react").then((mod) => ({ default: mod.ArrowLeft })),
+    { ssr: false }
+  ),
+  Send: dynamic(
+    () => import("lucide-react").then((mod) => ({ default: mod.Send })),
+    { ssr: false }
+  ),
+  Globe: dynamic(
+    () => import("lucide-react").then((mod) => ({ default: mod.Globe })),
+    { ssr: false }
+  ),
+  DollarSign: dynamic(
+    () => import("lucide-react").then((mod) => ({ default: mod.DollarSign })),
+    { ssr: false }
+  ),
+  Clock: dynamic(
+    () => import("lucide-react").then((mod) => ({ default: mod.Clock })),
+    { ssr: false }
+  ),
+  Shield: dynamic(
+    () => import("lucide-react").then((mod) => ({ default: mod.Shield })),
+    { ssr: false }
+  ),
+  CheckCircle: dynamic(
+    () => import("lucide-react").then((mod) => ({ default: mod.CheckCircle })),
+    { ssr: false }
+  ),
+  AlertTriangle: dynamic(
+    () =>
+      import("lucide-react").then((mod) => ({ default: mod.AlertTriangle })),
+    { ssr: false }
+  ),
+  ArrowRight: dynamic(
+    () => import("lucide-react").then((mod) => ({ default: mod.ArrowRight })),
+    { ssr: false }
+  ),
+  Zap: dynamic(
+    () => import("lucide-react").then((mod) => ({ default: mod.Zap })),
+    { ssr: false }
+  ),
+  Network: dynamic(
+    () => import("lucide-react").then((mod) => ({ default: mod.Network })),
+    { ssr: false }
+  ),
+  Wallet: dynamic(
+    () => import("lucide-react").then((mod) => ({ default: mod.Wallet })),
+    { ssr: false }
+  ),
 };
 
 import Link from "next/link";
@@ -43,9 +138,9 @@ import { toast } from "@/components/ui/use-toast";
 
 export default function SendPage() {
   const router = useRouter();
-  const [positions, setPositions] = useState([]);
+  const [positions, setPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     const loadData = async () => {
