@@ -122,6 +122,10 @@ const Icons = {
       import("lucide-react").then((mod) => ({ default: mod.ArrowLeftRight })),
     { ssr: false }
   ),
+  User: dynamic(
+    () => import("lucide-react").then((mod) => ({ default: mod.User })),
+    { ssr: false }
+  ),
 };
 
 // Dynamically import Card components
@@ -141,9 +145,15 @@ const CardContent = dynamic(
 const SidebarContext = createContext<{
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
+  isMobile: boolean;
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
 }>({
   isCollapsed: false,
   setIsCollapsed: () => {},
+  isMobile: false,
+  isOpen: false,
+  setIsOpen: () => {},
 });
 
 export const useSidebar = () => useContext(SidebarContext);
@@ -238,27 +248,9 @@ const sidebarItems: SidebarItem[] = [
   // Account & Profile
   {
     id: "profile",
-    label: "Profile Settings",
+    label: "Profile",
     href: "/dashboard/profile",
-    icon: "UserCircle",
-    category: "account",
-  },
-  {
-    id: "wallet",
-    label: "Wallet Address",
-    href: "/wallet-connect",
-    icon: "Wallet",
-    badge: "Connect",
-    badgeColor: "bg-orange-500",
-    category: "account",
-  },
-  {
-    id: "credit",
-    label: "Credit Score",
-    href: "/dashboard/credit",
-    icon: "Star",
-    badge: "750",
-    badgeColor: "bg-emerald-500",
+    icon: "User",
     category: "account",
   },
   {
@@ -367,36 +359,63 @@ interface SidebarProviderProps {
 
 export function SidebarProvider({ children }: SidebarProviderProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
+  // Handle responsive behavior
   useEffect(() => {
-    setMounted(true);
-    const saved = localStorage.getItem("sidebar-collapsed");
-    if (saved) {
-      setIsCollapsed(JSON.parse(saved));
-    }
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+
+      // Auto-collapse on mobile
+      if (mobile) {
+        setIsCollapsed(true);
+        setIsOpen(false);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  // Handle escape key to close mobile sidebar
   useEffect(() => {
-    if (mounted) {
-      localStorage.setItem("sidebar-collapsed", JSON.stringify(isCollapsed));
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isMobile && isOpen) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isMobile, isOpen]);
+
+  // Prevent body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (isMobile && isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
     }
-  }, [isCollapsed, mounted]);
 
-  const toggleSidebar = useCallback(() => {
-    setIsCollapsed((prev) => !prev);
-  }, []);
-
-  const contextValue = useMemo(
-    () => ({
-      isCollapsed,
-      setIsCollapsed: toggleSidebar,
-    }),
-    [isCollapsed, toggleSidebar]
-  );
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isMobile, isOpen]);
 
   return (
-    <SidebarContext.Provider value={contextValue}>
+    <SidebarContext.Provider
+      value={{
+        isCollapsed,
+        setIsCollapsed,
+        isMobile,
+        isOpen,
+        setIsOpen,
+      }}
+    >
       {children}
     </SidebarContext.Provider>
   );
@@ -404,11 +423,11 @@ export function SidebarProvider({ children }: SidebarProviderProps) {
 
 // Memoized sidebar component
 const EnhancedSidebar = memo(function EnhancedSidebar() {
-  const supabase = createClient();
-  const router = useRouter();
-  const pathname = usePathname();
+  const { isCollapsed, setIsCollapsed, isMobile, isOpen, setIsOpen } =
+    useSidebar();
   const [user, setUser] = useState<User | null>(null);
-  const { isCollapsed, setIsCollapsed } = useSidebar();
+  const pathname = usePathname();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   // Move useMemo before any potential early returns to maintain hooks order
@@ -428,7 +447,7 @@ const EnhancedSidebar = memo(function EnhancedSidebar() {
     const getUser = async () => {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await createClient().auth.getUser();
       setUser(user);
     };
 
@@ -437,12 +456,12 @@ const EnhancedSidebar = memo(function EnhancedSidebar() {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = createClient().auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null);
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase.auth]);
+  }, [createClient().auth]);
 
   // Prevent hydration issues
   if (!mounted) {
@@ -478,138 +497,185 @@ const EnhancedSidebar = memo(function EnhancedSidebar() {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  return (
-    <aside
-      className={`bg-white border-r border-gray-200 transition-all duration-300 ease-in-out ${
-        isCollapsed ? "w-16" : "w-64"
-      } flex flex-col fixed left-0 top-0 h-full z-40 shadow-lg`}
-    >
-      {/* Header */}
-      <div
-        className={`p-4 border-b border-gray-200 flex items-center ${
-          isCollapsed ? "justify-center" : "justify-between"
-        }`}
-      >
-        {!isCollapsed ? (
-          <>
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center group-hover:scale-105 transition-all duration-300 shadow-lg">
-                <span className="text-xl font-extrabold text-white">Tf</span>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">TangibleFi</h1>
-                <p className="text-xs text-gray-500">Real World Assets</p>
-              </div>
-            </Link>
+  const handleToggle = () => {
+    if (isMobile) {
+      setIsOpen(!isOpen);
+    } else {
+      setIsCollapsed(!isCollapsed);
+    }
+  };
 
-            {/* Toggle Button - Only when expanded */}
+  const handleOverlayClick = () => {
+    if (isMobile) {
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <>
+      {/* Mobile Overlay */}
+      {isMobile && isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          onClick={handleOverlayClick}
+        />
+      )}
+
+      {/* Mobile Toggle Button */}
+      {isMobile && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleToggle}
+          className="fixed top-4 left-4 z-50 md:hidden bg-white shadow-lg border border-gray-200 hover:bg-gray-50"
+        >
+          <Icons.ChevronRight
+            className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          />
+        </Button>
+      )}
+
+      <aside
+        className={`bg-white border-r border-gray-200 transition-all duration-300 ease-in-out ${
+          isMobile
+            ? `fixed left-0 top-0 h-full z-40 shadow-xl ${isOpen ? "w-64 translate-x-0" : "w-64 -translate-x-full"}`
+            : `fixed left-0 top-0 h-full z-40 shadow-lg ${isCollapsed ? "w-16" : "w-64"}`
+        } flex flex-col`}
+      >
+        {/* Header */}
+        <div
+          className={`p-4 border-b border-gray-200 flex items-center ${
+            isCollapsed && !isMobile ? "justify-center" : "justify-between"
+          }`}
+        >
+          {!isCollapsed || isMobile ? (
+            <>
+              <Link href="/" className="flex items-center gap-3 group">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center group-hover:scale-105 transition-all duration-300 shadow-lg">
+                  <span className="text-xl font-extrabold text-white">Tf</span>
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">
+                    TangibleFi
+                  </h1>
+                  <p className="text-xs text-gray-500">Real World Assets</p>
+                </div>
+              </Link>
+
+              {/* Toggle Button - Only when expanded or mobile */}
+              {!isMobile && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleToggle}
+                  className="ml-4 p-2 hover:bg-gray-100 rounded-lg transition-all duration-300"
+                >
+                  <Icons.ChevronLeft className="h-4 w-4 text-gray-600" />
+                </Button>
+              )}
+            </>
+          ) : (
+            /* Toggle Button replaces logo when collapsed on desktop */
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="ml-4 p-2 hover:bg-gray-100 rounded-lg transition-all duration-300"
+              onClick={handleToggle}
+              className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg"
             >
-              <Icons.ChevronLeft className="h-4 w-4 text-gray-600" />
+              <Icons.ChevronRight className="h-5 w-5 text-white" />
             </Button>
-          </>
-        ) : (
-          /* Toggle Button replaces logo when collapsed */
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg"
-          >
-            <Icons.ChevronRight className="h-5 w-5 text-white" />
-          </Button>
-        )}
-      </div>
+          )}
+        </div>
 
-      {/* User Profile Section - Only when expanded */}
-      {!isCollapsed && user && (
-        <div className="px-4 py-3 border-b border-gray-100">
-          <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
-            <div className="relative flex-shrink-0">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center shadow-md">
-                <span className="text-white text-sm font-bold">
-                  {getUserInitials()}
-                </span>
-              </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-gray-900 truncate">
-                {getUserDisplayName()}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-                <span className="text-xs text-emerald-600 font-medium">
-                  Active
-                </span>
-              </div>
-              {/* Wallet Address - if connected */}
-              {user?.user_metadata?.wallet_address && (
-                <div className="text-xs text-gray-500 font-mono">
-                  {truncateAddress(user.user_metadata.wallet_address)}
+        {/* User Profile Section - Only when expanded */}
+        {(!isCollapsed || isMobile) && user && (
+          <div className="px-4 py-3 border-b border-gray-100">
+            <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+              <div className="relative flex-shrink-0">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center shadow-md">
+                  <span className="text-white text-sm font-bold">
+                    {getUserInitials()}
+                  </span>
                 </div>
-              )}
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></div>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-gray-900 truncate">
+                  {getUserDisplayName()}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                  <span className="text-xs text-emerald-600 font-medium">
+                    Active
+                  </span>
+                </div>
+                {/* Wallet Address - if connected */}
+                {user?.user_metadata?.wallet_address && (
+                  <div className="text-xs text-gray-500 font-mono">
+                    {truncateAddress(user.user_metadata.wallet_address)}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Credit Score Widget - Only when expanded */}
-      {!isCollapsed && <CreditScoreWidget />}
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 px-2 sidebar-scroll">
+          <div className="space-y-6">
+            {groupedItems.map(({ category, label, items }) => (
+              <div key={category}>
+                {(!isCollapsed || isMobile) && (
+                  <div className="px-3 mb-2">
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      {label}
+                    </h3>
+                  </div>
+                )}
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2">
-        <div className="space-y-6">
-          {groupedItems.map(({ category, label, items }) => (
-            <div key={category}>
-              {!isCollapsed && (
-                <div className="px-3 mb-2">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    {label}
-                  </h3>
+                <div className="space-y-1">
+                  {items.map((item) => (
+                    <SidebarItemComponent
+                      key={item.id}
+                      item={item}
+                      isCollapsed={isCollapsed && !isMobile}
+                      pathname={pathname}
+                      onClick={() => {
+                        if (isMobile) {
+                          setIsOpen(false);
+                        }
+                      }}
+                    />
+                  ))}
                 </div>
-              )}
+              </div>
+            ))}
+          </div>
+        </nav>
 
-              <div className="space-y-1">
-                {items.map((item) => (
-                  <SidebarItemComponent
-                    key={item.id}
-                    item={item}
-                    isCollapsed={isCollapsed}
-                    pathname={pathname}
-                  />
-                ))}
+        {/* Footer */}
+        <div
+          className={`border-t border-gray-200 p-4 ${isCollapsed && !isMobile ? "px-2" : "px-4"}`}
+        >
+          {!isCollapsed || isMobile ? (
+            <div className="text-center">
+              <p className="text-xs text-gray-500 mb-2">TangibleFi v2.0</p>
+              <div className="flex justify-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-xs text-green-600 font-medium">
+                  All Systems Operational
+                </span>
               </div>
             </div>
-          ))}
-        </div>
-      </nav>
-
-      {/* Footer */}
-      <div
-        className={`border-t border-gray-200 p-4 ${isCollapsed ? "px-2" : "px-4"}`}
-      >
-        {!isCollapsed ? (
-          <div className="text-center">
-            <p className="text-xs text-gray-500 mb-2">TangibleFi v2.0</p>
-            <div className="flex justify-center gap-2">
+          ) : (
+            <div className="flex justify-center">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-xs text-green-600 font-medium">
-                All Systems Operational
-              </span>
             </div>
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-          </div>
-        )}
-      </div>
-    </aside>
+          )}
+        </div>
+      </aside>
+    </>
   );
 });
 
@@ -618,15 +684,23 @@ const SidebarItemComponent = memo(function SidebarItemComponent({
   item,
   isCollapsed,
   pathname,
+  onClick,
 }: {
   item: SidebarItem;
   isCollapsed: boolean;
   pathname: string;
+  onClick: () => void;
 }) {
   const isActive = pathname === item.href;
   const isExternal = item.href.startsWith("http");
 
   const IconComponent = Icons[item.icon];
+
+  const className = `group relative flex items-center w-full px-3 py-2.5 text-sm rounded-lg transition-all duration-200 ${
+    isActive
+      ? "bg-blue-50 border border-blue-200 text-blue-600 shadow-sm"
+      : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+  } ${isCollapsed ? "justify-center" : "justify-start"}`;
 
   const content = (
     <>
@@ -638,7 +712,7 @@ const SidebarItemComponent = memo(function SidebarItemComponent({
             isActive
               ? "text-blue-600"
               : "text-gray-600 group-hover:text-blue-600"
-          } transition-colors`}
+          } transition-colors flex-shrink-0`}
         />
 
         {!isCollapsed && (
@@ -648,14 +722,14 @@ const SidebarItemComponent = memo(function SidebarItemComponent({
                 isActive
                   ? "text-blue-600"
                   : "text-gray-700 group-hover:text-blue-600"
-              } transition-colors`}
+              } transition-colors truncate`}
             >
               {item.label}
             </span>
 
             {item.badge && (
               <Badge
-                className={`ml-auto text-xs ${item.badgeColor} text-white border-0`}
+                className={`ml-auto text-xs ${item.badgeColor} text-white border-0 flex-shrink-0`}
               >
                 {item.badge}
               </Badge>
@@ -663,14 +737,22 @@ const SidebarItemComponent = memo(function SidebarItemComponent({
           </>
         )}
       </div>
+
+      {/* Tooltip for collapsed state */}
+      {isCollapsed && (
+        <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+          {item.label}
+          {item.badge && (
+            <span
+              className={`ml-2 px-1.5 py-0.5 rounded text-xs ${item.badgeColor} text-white`}
+            >
+              {item.badge}
+            </span>
+          )}
+        </div>
+      )}
     </>
   );
-
-  const className = `group flex items-center w-full px-3 py-2.5 text-sm rounded-lg transition-all duration-200 ${
-    isActive
-      ? "bg-blue-50 border border-blue-200 text-blue-600 shadow-sm"
-      : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
-  } ${isCollapsed ? "justify-center" : "justify-start"}`;
 
   if (isExternal) {
     return (
@@ -691,54 +773,10 @@ const SidebarItemComponent = memo(function SidebarItemComponent({
       href={item.href}
       className={className}
       title={isCollapsed ? item.label : undefined}
+      onClick={onClick}
     >
       {content}
     </Link>
-  );
-});
-
-// Memoized credit score widget
-const CreditScoreWidget = memo(function CreditScoreWidget() {
-  const [creditScore] = useState(750);
-
-  return (
-    <div className="mx-4 my-3">
-      <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Icons.Star className="h-4 w-4 text-emerald-600" />
-              <span className="text-sm font-semibold text-emerald-800">
-                Credit Score
-              </span>
-            </div>
-            <Badge className="bg-emerald-600 text-white text-xs">
-              Excellent
-            </Badge>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-emerald-700">
-                {creditScore}
-              </span>
-              <span className="text-xs text-emerald-600">/850</span>
-            </div>
-
-            <div className="w-full bg-emerald-200 rounded-full h-2">
-              <div
-                className="bg-emerald-600 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${(creditScore / 850) * 100}%` }}
-              ></div>
-            </div>
-
-            <p className="text-xs text-emerald-700">
-              Qualify for premium rates
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
   );
 });
 

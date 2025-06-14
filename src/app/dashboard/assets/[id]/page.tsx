@@ -15,6 +15,7 @@ import {
   MapPin,
   FileText,
   TrendingUp,
+  TrendingDown,
   Activity,
   Clock,
   CheckCircle,
@@ -25,9 +26,12 @@ import {
   Download,
   Eye,
   ExternalLink,
+  Shield,
+  Wallet,
+  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 interface Asset {
   id: string;

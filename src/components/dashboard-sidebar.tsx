@@ -157,42 +157,24 @@ export default function DashboardSidebar() {
   }, []);
 
   const fetchNotifications = async (userId: string) => {
-    // Mock notifications - in a real app, these would come from your database
-    const mockNotifications: Notification[] = [
-      {
-        id: "1",
-        type: "payment_due",
-        title: "EMI Payment Due Soon",
-        message: `Your loan payment of ${formatCurrency(2500)} is due in 3 days`,
-        timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-        read: false,
-        priority: "high",
-      },
-      {
-        id: "2",
-        type: "asset_verified",
-        title: "Asset NFT Verified",
-        message: `Your Downtown Office Building (${formatCurrency(850000)}) has been successfully verified and minted`,
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-        read: false,
-        priority: "medium",
-      },
-    ];
-
-    setNotifications(mockNotifications);
+    // Real notifications would be fetched from your database here
+    // For now, we'll start with an empty array
+    const notifications: Notification[] = [];
+    setNotifications(notifications);
   };
 
   const fetchUserCredit = async (userId: string) => {
-    // Mock credit data with calculated credit score based on payment history
-    const mockCredit: UserCredit = {
-      available: 125000,
-      total: 150000, // Higher limit due to excellent credit score
-      used: 25000,
-      level: "Platinum", // Upgraded due to good payment history
-      nextTierAmount: 0, // Already at highest tier
+    // Real credit data would be fetched from your database here
+    // Starting with basic credit profile
+    const userCredit: UserCredit = {
+      available: 0,
+      total: 0,
+      used: 0,
+      level: "Bronze",
+      nextTierAmount: 10000, // Amount needed to reach Silver
     };
 
-    setUserCredit(mockCredit);
+    setUserCredit(userCredit);
   };
 
   const isActive = (href: string, exact = false) => {
@@ -374,130 +356,6 @@ export default function DashboardSidebar() {
 
       {/* User Section with Credit */}
       <div className="border-t border-gray-200 p-4 space-y-4">
-        {/* Credit Section */}
-        {userCredit && (
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Award className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm font-semibold text-gray-900">
-                  Credit Score
-                </span>
-              </div>
-              <div
-                className={cn(
-                  "px-2 py-1 rounded-full text-xs font-bold border",
-                  "text-emerald-600 bg-emerald-50 border-emerald-200"
-                )}
-              >
-                Excellent
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {/* Credit Score Display - Main Focus */}
-              <div className="text-center bg-white/80 rounded-xl p-4 border border-white/60 shadow-sm">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <Star className="h-5 w-5 text-yellow-500" />
-                  <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                    Credit Score
-                  </span>
-                </div>
-                <div className="text-3xl font-bold text-gray-900 mb-2">785</div>
-                <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-                  <div
-                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-3 rounded-full transition-all duration-1000"
-                    style={{ width: "92%" }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-gray-600">
-                  <span>300</span>
-                  <span className="font-semibold text-emerald-600">
-                    Excellent
-                  </span>
-                  <span>850</span>
-                </div>
-              </div>
-
-              {/* Loan Eligibility - Based on Credit Score */}
-              <div className="bg-emerald-50/80 rounded-lg p-3 border border-emerald-200/60">
-                <div className="flex items-center gap-2 mb-2">
-                  <Target className="h-3 w-3 text-emerald-600" />
-                  <span className="text-xs font-semibold text-emerald-700">
-                    Loan Eligibility
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-emerald-600">Max Loan:</span>
-                    <span className="font-bold text-emerald-700">$500K</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-emerald-600">Best Rate:</span>
-                    <span className="font-bold text-emerald-700">4.5% APR</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-emerald-600">Status:</span>
-                    <span className="font-bold text-emerald-700">
-                      Pre-approved
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Available Credit - Secondary Info */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-blue-50/60 rounded-lg p-2 border border-blue-200/40">
-                  <div className="text-xs text-blue-600 font-medium mb-1">
-                    Available
-                  </div>
-                  <div className="text-sm font-bold text-gray-900">
-                    {formatCurrency(userCredit.available)}
-                  </div>
-                </div>
-                <div className="bg-purple-50/60 rounded-lg p-2 border border-purple-200/40">
-                  <div className="text-xs text-purple-600 font-medium mb-1">
-                    Total Limit
-                  </div>
-                  <div className="text-sm font-bold text-gray-900">
-                    {formatCurrency(userCredit.total)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Credit Usage - Compact */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">
-                    Credit Used: {getCreditUsagePercentage().toFixed(1)}%
-                  </span>
-                  <span className="text-emerald-600 font-medium">
-                    Healthy Usage
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-1.5">
-                  <div
-                    className="bg-gradient-to-r from-blue-500 to-blue-600 h-1.5 rounded-full transition-all duration-500"
-                    style={{ width: `${getCreditUsagePercentage()}%` }}
-                  />
-                </div>
-              </div>
-
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full mt-2 text-blue-600 border-blue-200 hover:bg-blue-50"
-                asChild
-              >
-                <Link href="/dashboard/credit">
-                  <BarChart3 className="h-3 w-3 mr-1" />
-                  View Credit Report
-                </Link>
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* User Profile */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

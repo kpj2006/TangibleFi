@@ -1,12 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { useSettingsData } from "../../../hooks/use-settings-data";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../../components/ui/card";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Label } from "../../../components/ui/label";
+import { Badge } from "../../../components/ui/badge";
+import { Switch } from "../../../components/ui/switch";
 import {
   Settings,
   Bell,
@@ -25,6 +31,16 @@ import {
   AlertTriangle,
   CheckCircle,
   Save,
+  RefreshCw,
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  Download,
+  Upload,
+  Trash2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   Select,
@@ -32,104 +48,347 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "../../../components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../../components/ui/tabs";
+import { Textarea } from "../../../components/ui/textarea";
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState({
-    notifications: {
-      emailAlerts: true,
-      pushNotifications: true,
-      smsAlerts: false,
-      weeklyReports: true,
-      priceAlerts: true,
-      securityNotifications: true,
-    },
-    appearance: {
-      theme: "light",
-      language: "en",
-      timezone: "UTC",
-      currency: "USD",
-      dateFormat: "MM/DD/YYYY",
-      numberFormat: "US",
-    },
-    security: {
-      twoFactorAuth: false,
-      sessionTimeout: 30,
-      biometricAuth: false,
-      deviceTrust: true,
-      auditLog: true,
-    },
-    trading: {
-      confirmations: true,
-      slippageTolerance: 0.5,
-      gasPrice: "standard",
-      autoApproval: false,
-      maxTransactionValue: 10000,
-    },
-    integrations: {
-      metamask: true,
-      coinbase: false,
-      ledger: false,
-      trezor: false,
-      walletConnect: true,
-    },
-    api: {
-      enabled: false,
-      rateLimit: 100,
-      webhook: "",
-      ipWhitelist: "",
-    },
-  });
+  const settingsData = useSettingsData();
+  const [activeTab, setActiveTab] = useState("profile");
+  const [showAPIKey, setShowAPIKey] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [loading, setLoading] = useState(false);
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await settingsData.refreshData();
+    setTimeout(() => setIsRefreshing(false), 1000);
+  };
 
   const handleSave = async (section?: string) => {
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+    if (section) {
+      await settingsData.saveSettings({
+        [section]: settingsData[section as keyof typeof settingsData],
+      });
+    } else {
+      await settingsData.saveSettings({
+        notifications: settingsData.notifications,
+        appearance: settingsData.appearance,
+        security: settingsData.security,
+        trading: settingsData.trading,
+        integrations: settingsData.integrations,
+        api: settingsData.api,
+      });
+    }
   };
 
-  const updateSetting = (section: string, key: string, value: any) => {
-    setSettings((prev) => ({
-      ...prev,
-      [section]: {
-        ...prev[section as keyof typeof prev],
-        [key]: value,
-      },
-    }));
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
+
+  if (settingsData.loading) {
+    return (
+      <div className="w-full px-6 py-6 space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-48 mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-96 mb-8"></div>
+          <div className="grid grid-cols-6 gap-4 mb-8">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-10 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+          <div className="space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
+    <div className="w-full px-6 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-4xl font-bold text-gray-900">Settings</h1>
+          <p className="text-lg text-gray-600 mt-3">
             Manage your platform preferences and configurations
           </p>
+          {settingsData.last_updated && (
+            <div className="flex items-center gap-2 mt-1">
+              <Calendar className="h-4 w-4 text-gray-400" />
+              <span className="text-sm text-gray-500">
+                Last updated: {settingsData.last_updated.toLocaleTimeString()}
+              </span>
+            </div>
+          )}
         </div>
-        <Button onClick={() => handleSave()} disabled={loading}>
-          <Save className="w-4 h-4 mr-2" />
-          {loading ? "Saving..." : "Save All"}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+            {isRefreshing ? "Refreshing..." : "Refresh"}
+          </Button>
+          <Button onClick={() => handleSave()} disabled={settingsData.saving}>
+            <Save className="w-4 h-4 mr-2" />
+            {settingsData.saving ? "Saving..." : "Save All"}
+          </Button>
+        </div>
       </div>
 
-      <Tabs defaultValue="general" className="w-full">
+      {/* Error State */}
+      {settingsData.error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-red-800">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="font-medium">Error loading settings</span>
+            </div>
+            <p className="text-red-600 text-sm mt-1">{settingsData.error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Settings Status */}
+      <Card className="bg-gradient-to-r from-blue-50 to-green-50 border-blue-200">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <Settings className="h-4 w-4 text-blue-600" />
+                <span className="font-medium text-gray-900">
+                  Settings Synchronized
+                </span>
+              </div>
+              <div className="text-sm text-gray-600">
+                Real-time sync with secure cloud storage
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-1">
+                <Shield className="h-4 w-4 text-green-500" />
+                <span className="text-green-600 font-medium">Secure</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <CheckCircle className="h-4 w-4 text-blue-500" />
+                <span className="text-blue-600 font-medium">Synced</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="trading">Trading</TabsTrigger>
-          <TabsTrigger value="integrations">Integrations</TabsTrigger>
-          <TabsTrigger value="advanced">Advanced</TabsTrigger>
+          <TabsTrigger value="profile" className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            Profile
+          </TabsTrigger>
+          <TabsTrigger
+            value="notifications"
+            className="flex items-center gap-2"
+          >
+            <Bell className="h-4 w-4" />
+            Notifications
+          </TabsTrigger>
+          <TabsTrigger value="appearance" className="flex items-center gap-2">
+            <Palette className="h-4 w-4" />
+            Appearance
+          </TabsTrigger>
+          <TabsTrigger value="security" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Security
+          </TabsTrigger>
+          <TabsTrigger value="trading" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            Trading
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="flex items-center gap-2">
+            <Network className="h-4 w-4" />
+            Integrations
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="general" className="space-y-6">
-          {/* Appearance */}
+        {/* Profile Tab */}
+        <TabsContent value="profile" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Profile Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {settingsData.profile && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label>Full Name</Label>
+                    <Input
+                      value={settingsData.profile.full_name}
+                      onChange={(e) => {
+                        // Profile updates would need a separate handler
+                        console.log("Profile update:", e.target.value);
+                      }}
+                      placeholder="Enter your full name"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Email Address</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={settingsData.profile.email}
+                        disabled
+                        className="bg-gray-50"
+                      />
+                      <Badge
+                        variant="outline"
+                        className="text-green-600 border-green-200"
+                      >
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Verified
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Phone Number</Label>
+                    <Input
+                      value={settingsData.profile.phone || ""}
+                      onChange={(e) => {
+                        // Profile updates would need a separate handler
+                        console.log("Phone update:", e.target.value);
+                      }}
+                      placeholder="Enter your phone number"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Avatar URL</Label>
+                    <Input
+                      value={settingsData.profile.avatar_url || ""}
+                      onChange={(e) => {
+                        // Profile updates would need a separate handler
+                        console.log("Avatar update:", e.target.value);
+                      }}
+                      placeholder="Enter avatar URL"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-gray-900">
+                      Account Information
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Your account details and status
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Data
+                  </Button>
+                </div>
+                {settingsData.profile && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-600">
+                        Account Created
+                      </span>
+                      <span className="text-sm font-medium">
+                        {formatDate(settingsData.profile.created_at)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-600">
+                        Last Updated
+                      </span>
+                      <span className="text-sm font-medium">
+                        {formatDate(settingsData.profile.updated_at)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Notifications Tab */}
+        <TabsContent value="notifications" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="w-5 h-5" />
+                Notification Preferences
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                {Object.entries(settingsData.notifications).map(
+                  ([key, value]) => (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between"
+                    >
+                      <div>
+                        <Label className="text-sm font-medium capitalize">
+                          {key.replace(/_/g, " ")}
+                        </Label>
+                        <p className="text-xs text-gray-500">
+                          {key === "email_alerts" &&
+                            "Receive important updates via email"}
+                          {key === "push_notifications" &&
+                            "Browser push notifications"}
+                          {key === "sms_alerts" &&
+                            "SMS notifications for critical events"}
+                          {key === "weekly_reports" &&
+                            "Weekly portfolio summary reports"}
+                          {key === "price_alerts" &&
+                            "Asset price change notifications"}
+                          {key === "security_notifications" &&
+                            "Security and login alerts"}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={value}
+                        onCheckedChange={(checked) =>
+                          settingsData.updateSettings("notifications", {
+                            [key]: checked,
+                          })
+                        }
+                      />
+                    </div>
+                  )
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Appearance Tab */}
+        <TabsContent value="appearance" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -142,9 +401,11 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Theme</Label>
                   <Select
-                    value={settings.appearance.theme}
+                    value={settingsData.appearance.theme}
                     onValueChange={(value) =>
-                      updateSetting("appearance", "theme", value)
+                      settingsData.updateSettings("appearance", {
+                        theme: value,
+                      })
                     }
                   >
                     <SelectTrigger>
@@ -161,9 +422,11 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Language</Label>
                   <Select
-                    value={settings.appearance.language}
+                    value={settingsData.appearance.language}
                     onValueChange={(value) =>
-                      updateSetting("appearance", "language", value)
+                      settingsData.updateSettings("appearance", {
+                        language: value,
+                      })
                     }
                   >
                     <SelectTrigger>
@@ -183,9 +446,11 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Timezone</Label>
                   <Select
-                    value={settings.appearance.timezone}
+                    value={settingsData.appearance.timezone}
                     onValueChange={(value) =>
-                      updateSetting("appearance", "timezone", value)
+                      settingsData.updateSettings("appearance", {
+                        timezone: value,
+                      })
                     }
                   >
                     <SelectTrigger>
@@ -202,21 +467,24 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Default Currency</Label>
+                  <Label>Currency</Label>
                   <Select
-                    value={settings.appearance.currency}
+                    value={settingsData.appearance.currency}
                     onValueChange={(value) =>
-                      updateSetting("appearance", "currency", value)
+                      settingsData.updateSettings("appearance", {
+                        currency: value,
+                      })
                     }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="USD">USD - US Dollar</SelectItem>
-                      <SelectItem value="EUR">EUR - Euro</SelectItem>
-                      <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                      <SelectItem value="JPY">JPY - Japanese Yen</SelectItem>
+                      <SelectItem value="USD">USD ($)</SelectItem>
+                      <SelectItem value="EUR">EUR (€)</SelectItem>
+                      <SelectItem value="GBP">GBP (£)</SelectItem>
+                      <SelectItem value="JPY">JPY (¥)</SelectItem>
+                      <SelectItem value="CAD">CAD (C$)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -224,9 +492,11 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Date Format</Label>
                   <Select
-                    value={settings.appearance.dateFormat}
+                    value={settingsData.appearance.date_format}
                     onValueChange={(value) =>
-                      updateSetting("appearance", "dateFormat", value)
+                      settingsData.updateSettings("appearance", {
+                        date_format: value,
+                      })
                     }
                   >
                     <SelectTrigger>
@@ -243,18 +513,20 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Number Format</Label>
                   <Select
-                    value={settings.appearance.numberFormat}
+                    value={settingsData.appearance.number_format}
                     onValueChange={(value) =>
-                      updateSetting("appearance", "numberFormat", value)
+                      settingsData.updateSettings("appearance", {
+                        number_format: value,
+                      })
                     }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="US">1,234.56 (US)</SelectItem>
-                      <SelectItem value="EU">1.234,56 (EU)</SelectItem>
-                      <SelectItem value="IN">1,23,456.78 (Indian)</SelectItem>
+                      <SelectItem value="US">US (1,234.56)</SelectItem>
+                      <SelectItem value="EU">EU (1.234,56)</SelectItem>
+                      <SelectItem value="IN">IN (1,23,456.78)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -263,71 +535,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="notifications" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="w-5 h-5" />
-                Notification Preferences
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {[
-                {
-                  key: "emailAlerts",
-                  label: "Email Alerts",
-                  desc: "Receive important updates via email",
-                },
-                {
-                  key: "pushNotifications",
-                  label: "Push Notifications",
-                  desc: "Browser and app push notifications",
-                },
-                {
-                  key: "smsAlerts",
-                  label: "SMS Alerts",
-                  desc: "Critical notifications via text message",
-                },
-                {
-                  key: "weeklyReports",
-                  label: "Weekly Reports",
-                  desc: "Portfolio performance summaries",
-                },
-                {
-                  key: "priceAlerts",
-                  label: "Price Alerts",
-                  desc: "Asset price movement notifications",
-                },
-                {
-                  key: "securityNotifications",
-                  label: "Security Notifications",
-                  desc: "Account security and login alerts",
-                },
-              ].map((item) => (
-                <div
-                  key={item.key}
-                  className="flex items-center justify-between"
-                >
-                  <div>
-                    <h4 className="font-medium text-gray-900">{item.label}</h4>
-                    <p className="text-sm text-gray-500">{item.desc}</p>
-                  </div>
-                  <Switch
-                    checked={
-                      settings.notifications[
-                        item.key as keyof typeof settings.notifications
-                      ] as boolean
-                    }
-                    onCheckedChange={(checked) =>
-                      updateSetting("notifications", item.key, checked)
-                    }
-                  />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
+        {/* Security Tab */}
         <TabsContent value="security" className="space-y-6">
           <Card>
             <CardHeader>
@@ -338,102 +546,78 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium text-gray-900">
-                      Two-Factor Authentication
-                    </h4>
-                    <p className="text-sm text-gray-500">
-                      Add extra security with 2FA
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.security.twoFactorAuth}
-                    onCheckedChange={(checked) =>
-                      updateSetting("security", "twoFactorAuth", checked)
-                    }
-                  />
-                </div>
+                {Object.entries(settingsData.security).map(([key, value]) => {
+                  if (key === "session_timeout") {
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between"
+                      >
+                        <div>
+                          <Label className="text-sm font-medium">
+                            Session Timeout (minutes)
+                          </Label>
+                          <p className="text-xs text-gray-500">
+                            Automatically log out after inactivity
+                          </p>
+                        </div>
+                        <div className="w-32">
+                          <Input
+                            type="number"
+                            value={value}
+                            onChange={(e) =>
+                              settingsData.updateSettings("security", {
+                                [key]: parseInt(e.target.value),
+                              })
+                            }
+                            min="5"
+                            max="480"
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium text-gray-900">
-                      Biometric Authentication
-                    </h4>
-                    <p className="text-sm text-gray-500">
-                      Use fingerprint or face recognition
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.security.biometricAuth}
-                    onCheckedChange={(checked) =>
-                      updateSetting("security", "biometricAuth", checked)
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Device Trust</h4>
-                    <p className="text-sm text-gray-500">
-                      Remember trusted devices
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.security.deviceTrust}
-                    onCheckedChange={(checked) =>
-                      updateSetting("security", "deviceTrust", checked)
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Audit Log</h4>
-                    <p className="text-sm text-gray-500">
-                      Track account activities
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.security.auditLog}
-                    onCheckedChange={(checked) =>
-                      updateSetting("security", "auditLog", checked)
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="border-t pt-4">
-                <div className="space-y-3">
-                  <Label>Session Timeout (minutes)</Label>
-                  <Select
-                    value={settings.security.sessionTimeout.toString()}
-                    onValueChange={(value) =>
-                      updateSetting("security", "sessionTimeout", Number(value))
-                    }
-                  >
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="15">15 minutes</SelectItem>
-                      <SelectItem value="30">30 minutes</SelectItem>
-                      <SelectItem value="60">1 hour</SelectItem>
-                      <SelectItem value="240">4 hours</SelectItem>
-                      <SelectItem value="480">8 hours</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between"
+                    >
+                      <div>
+                        <Label className="text-sm font-medium capitalize">
+                          {key.replace(/_/g, " ")}
+                        </Label>
+                        <p className="text-xs text-gray-500">
+                          {key === "two_factor_auth" &&
+                            "Enable 2FA for additional security"}
+                          {key === "biometric_auth" &&
+                            "Use fingerprint or face recognition"}
+                          {key === "device_trust" && "Remember trusted devices"}
+                          {key === "audit_log" && "Keep detailed activity logs"}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={value as boolean}
+                        onCheckedChange={(checked) =>
+                          settingsData.updateSettings("security", {
+                            [key]: checked,
+                          })
+                        }
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Trading Tab */}
         <TabsContent value="trading" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Zap className="w-5 h-5" />
+                <CreditCard className="w-5 h-5" />
                 Trading Preferences
               </CardTitle>
             </CardHeader>
@@ -441,317 +625,317 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-medium text-gray-900">
+                    <Label className="text-sm font-medium">
                       Transaction Confirmations
-                    </h4>
-                    <p className="text-sm text-gray-500">
+                    </Label>
+                    <p className="text-xs text-gray-500">
                       Require confirmation for all transactions
                     </p>
                   </div>
                   <Switch
-                    checked={settings.trading.confirmations}
+                    checked={settingsData.trading.confirmations}
                     onCheckedChange={(checked) =>
-                      updateSetting("trading", "confirmations", checked)
+                      settingsData.updateSettings("trading", {
+                        confirmations: checked,
+                      })
                     }
                   />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-medium text-gray-900">
-                      Auto Approval (Small Amounts)
-                    </h4>
-                    <p className="text-sm text-gray-500">
-                      Skip confirmation for small transactions
+                    <Label className="text-sm font-medium">
+                      Slippage Tolerance (%)
+                    </Label>
+                    <p className="text-xs text-gray-500">
+                      Maximum acceptable price slippage
+                    </p>
+                  </div>
+                  <div className="w-32">
+                    <Input
+                      type="number"
+                      value={settingsData.trading.slippage_tolerance}
+                      onChange={(e) =>
+                        settingsData.updateSettings("trading", {
+                          slippage_tolerance: parseFloat(e.target.value),
+                        })
+                      }
+                      min="0.1"
+                      max="10"
+                      step="0.1"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">
+                      Gas Price Setting
+                    </Label>
+                    <p className="text-xs text-gray-500">
+                      Default gas price for transactions
+                    </p>
+                  </div>
+                  <div className="w-32">
+                    <Select
+                      value={settingsData.trading.gas_price}
+                      onValueChange={(value) =>
+                        settingsData.updateSettings("trading", {
+                          gas_price: value,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="slow">Slow</SelectItem>
+                        <SelectItem value="standard">Standard</SelectItem>
+                        <SelectItem value="fast">Fast</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">Auto Approval</Label>
+                    <p className="text-xs text-gray-500">
+                      Automatically approve small transactions
                     </p>
                   </div>
                   <Switch
-                    checked={settings.trading.autoApproval}
+                    checked={settingsData.trading.auto_approval}
                     onCheckedChange={(checked) =>
-                      updateSetting("trading", "autoApproval", checked)
+                      settingsData.updateSettings("trading", {
+                        auto_approval: checked,
+                      })
                     }
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>Slippage Tolerance (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={settings.trading.slippageTolerance}
-                    onChange={(e) =>
-                      updateSetting(
-                        "trading",
-                        "slippageTolerance",
-                        Number(e.target.value)
-                      )
-                    }
-                  />
-                  <p className="text-xs text-gray-500">
-                    Maximum price movement tolerance
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Gas Price Preference</Label>
-                  <Select
-                    value={settings.trading.gasPrice}
-                    onValueChange={(value) =>
-                      updateSetting("trading", "gasPrice", value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="slow">Slow (Low Cost)</SelectItem>
-                      <SelectItem value="standard">Standard</SelectItem>
-                      <SelectItem value="fast">Fast (Higher Cost)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Max Transaction Value ($)</Label>
-                  <Input
-                    type="number"
-                    value={settings.trading.maxTransactionValue}
-                    onChange={(e) =>
-                      updateSetting(
-                        "trading",
-                        "maxTransactionValue",
-                        Number(e.target.value)
-                      )
-                    }
-                  />
-                  <p className="text-xs text-gray-500">
-                    Requires additional confirmation above this amount
-                  </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">
+                      Max Transaction Value ($)
+                    </Label>
+                    <p className="text-xs text-gray-500">
+                      Maximum single transaction amount
+                    </p>
+                  </div>
+                  <div className="w-32">
+                    <Input
+                      type="number"
+                      value={settingsData.trading.max_transaction_value}
+                      onChange={(e) =>
+                        settingsData.updateSettings("trading", {
+                          max_transaction_value: parseInt(e.target.value),
+                        })
+                      }
+                      min="100"
+                      max="1000000"
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Integrations Tab */}
         <TabsContent value="integrations" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Network className="w-5 h-5" />
-                Wallet & Exchange Integrations
+                Wallet Integrations
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[
-                  {
-                    key: "metamask",
-                    label: "MetaMask",
-                    desc: "Browser wallet integration",
-                    status: "connected",
-                  },
-                  {
-                    key: "coinbase",
-                    label: "Coinbase Wallet",
-                    desc: "Mobile and web wallet",
-                    status: "disconnected",
-                  },
-                  {
-                    key: "ledger",
-                    label: "Ledger",
-                    desc: "Hardware wallet support",
-                    status: "disconnected",
-                  },
-                  {
-                    key: "trezor",
-                    label: "Trezor",
-                    desc: "Hardware wallet support",
-                    status: "disconnected",
-                  },
-                  {
-                    key: "walletConnect",
-                    label: "WalletConnect",
-                    desc: "Mobile wallet protocol",
-                    status: "connected",
-                  },
-                ].map((integration) => (
-                  <div
-                    key={integration.key}
-                    className="border border-gray-200 rounded-lg p-4"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h4 className="font-medium text-gray-900">
-                          {integration.label}
-                        </h4>
-                        <p className="text-sm text-gray-500">
-                          {integration.desc}
-                        </p>
+              <div className="space-y-4">
+                {Object.entries(settingsData.integrations).map(
+                  ([key, value]) => (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                          {key === "metamask" && (
+                            <Globe className="h-4 w-4 text-orange-600" />
+                          )}
+                          {key === "coinbase" && (
+                            <Database className="h-4 w-4 text-blue-600" />
+                          )}
+                          {key === "ledger" && (
+                            <Shield className="h-4 w-4 text-green-600" />
+                          )}
+                          {key === "trezor" && (
+                            <Lock className="h-4 w-4 text-red-600" />
+                          )}
+                          {key === "wallet_connect" && (
+                            <Smartphone className="h-4 w-4 text-purple-600" />
+                          )}
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium capitalize">
+                            {key.replace(/_/g, " ")}
+                          </Label>
+                          <p className="text-xs text-gray-500">
+                            {key === "metamask" &&
+                              "Connect with MetaMask wallet"}
+                            {key === "coinbase" &&
+                              "Coinbase Wallet integration"}
+                            {key === "ledger" && "Hardware wallet support"}
+                            {key === "trezor" && "Trezor hardware wallet"}
+                            {key === "wallet_connect" &&
+                              "WalletConnect protocol"}
+                          </p>
+                        </div>
                       </div>
-                      <Badge
-                        className={
-                          integration.status === "connected"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                        }
-                      >
-                        {integration.status}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        {value && (
+                          <Badge
+                            variant="outline"
+                            className="text-green-600 border-green-200"
+                          >
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Connected
+                          </Badge>
+                        )}
+                        <Switch
+                          checked={value}
+                          onCheckedChange={(checked) =>
+                            settingsData.updateSettings("integrations", {
+                              [key]: checked,
+                            })
+                          }
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <Switch
-                        checked={
-                          settings.integrations[
-                            integration.key as keyof typeof settings.integrations
-                          ] as boolean
-                        }
-                        onCheckedChange={(checked) =>
-                          updateSetting(
-                            "integrations",
-                            integration.key,
-                            checked
-                          )
-                        }
-                      />
-                      <Button variant="outline" size="sm">
-                        {integration.status === "connected"
-                          ? "Configure"
-                          : "Connect"}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="advanced" className="space-y-6">
           {/* API Settings */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Database className="w-5 h-5" />
+                <Key className="w-5 h-5" />
                 API Configuration
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-gray-900">API Access</h4>
-                  <p className="text-sm text-gray-500">
-                    Enable programmatic access to your account
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.api.enabled}
-                  onCheckedChange={(checked) =>
-                    updateSetting("api", "enabled", checked)
-                  }
-                />
-              </div>
-
-              {settings.api.enabled && (
-                <div className="space-y-4 border-t pt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Rate Limit (requests/hour)</Label>
-                      <Input
-                        type="number"
-                        value={settings.api.rateLimit}
-                        onChange={(e) =>
-                          updateSetting(
-                            "api",
-                            "rateLimit",
-                            Number(e.target.value)
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Webhook URL</Label>
-                      <Input
-                        type="url"
-                        placeholder="https://your-server.com/webhook"
-                        value={settings.api.webhook}
-                        onChange={(e) =>
-                          updateSetting("api", "webhook", e.target.value)
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>IP Whitelist (comma-separated)</Label>
-                    <Input
-                      placeholder="192.168.1.1, 10.0.0.1"
-                      value={settings.api.ipWhitelist}
-                      onChange={(e) =>
-                        updateSetting("api", "ipWhitelist", e.target.value)
-                      }
-                    />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">API Access</Label>
                     <p className="text-xs text-gray-500">
-                      Leave empty to allow all IPs
+                      Enable API access for third-party integrations
                     </p>
                   </div>
-
-                  <div className="flex gap-3">
-                    <Button variant="outline">
-                      <Key className="w-4 h-4 mr-2" />
-                      Generate API Key
-                    </Button>
-                    <Button variant="outline">
-                      <Webhook className="w-4 h-4 mr-2" />
-                      Test Webhook
-                    </Button>
-                  </div>
+                  <Switch
+                    checked={settingsData.api.enabled}
+                    onCheckedChange={(checked) =>
+                      settingsData.updateSettings("api", { enabled: checked })
+                    }
+                  />
                 </div>
-              )}
-            </CardContent>
-          </Card>
 
-          {/* Danger Zone */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-red-600">
-                <AlertTriangle className="w-5 h-5" />
-                Danger Zone
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="border border-red-200 rounded-lg p-4 bg-red-50">
-                <h4 className="font-medium text-red-900 mb-2">
-                  Export Account Data
-                </h4>
-                <p className="text-red-700 text-sm mb-3">
-                  Download all your account data including transactions, assets,
-                  and settings.
-                </p>
-                <Button
-                  variant="outline"
-                  className="border-red-300 text-red-700"
-                >
-                  Export Data
-                </Button>
-              </div>
+                {settingsData.api.enabled && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-sm font-medium">
+                          Rate Limit (requests/hour)
+                        </Label>
+                        <p className="text-xs text-gray-500">
+                          Maximum API requests per hour
+                        </p>
+                      </div>
+                      <div className="w-32">
+                        <Input
+                          type="number"
+                          value={settingsData.api.rate_limit}
+                          onChange={(e) =>
+                            settingsData.updateSettings("api", {
+                              rate_limit: parseInt(e.target.value),
+                            })
+                          }
+                          min="10"
+                          max="10000"
+                        />
+                      </div>
+                    </div>
 
-              <div className="border border-red-200 rounded-lg p-4 bg-red-50">
-                <h4 className="font-medium text-red-900 mb-2">
-                  Delete Account
-                </h4>
-                <p className="text-red-700 text-sm mb-3">
-                  Permanently delete your account and all associated data. This
-                  action cannot be undone.
-                </p>
-                <Button variant="destructive">Delete Account</Button>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Webhook URL</Label>
+                      <Input
+                        value={settingsData.api.webhook_url}
+                        onChange={(e) =>
+                          settingsData.updateSettings("api", {
+                            webhook_url: e.target.value,
+                          })
+                        }
+                        placeholder="https://your-app.com/webhook"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">
+                        IP Whitelist
+                      </Label>
+                      <Textarea
+                        value={settingsData.api.ip_whitelist}
+                        onChange={(e) =>
+                          settingsData.updateSettings("api", {
+                            ip_whitelist: e.target.value,
+                          })
+                        }
+                        placeholder="192.168.1.1, 10.0.0.1"
+                        rows={3}
+                      />
+                      <p className="text-xs text-gray-500">
+                        Comma-separated list of allowed IP addresses
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Save Actions */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <span className="text-sm text-gray-600">
+                Settings are automatically saved when changed
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Export Settings
+              </Button>
+              <Button variant="outline" size="sm">
+                <Upload className="h-4 w-4 mr-2" />
+                Import Settings
+              </Button>
+              <Button variant="destructive" size="sm">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Reset All
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

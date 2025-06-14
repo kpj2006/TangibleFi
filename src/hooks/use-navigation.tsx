@@ -8,33 +8,22 @@ export function useNavigation() {
   const [isLoading, setIsLoading] = useState(false);
 
   const navigateWithLoading = useCallback(
-    (href: string, delay: number = 800) => {
-      setIsLoading(true);
-
-      // Show loading animation for specified delay
-      setTimeout(() => {
-        router.push(href);
-
-        // Hide loading after navigation
-        setTimeout(() => {
-          setIsLoading(false);
-        }, 300);
-      }, delay);
+    (href: string, delay: number = 0) => {
+      // Remove artificial delays for better performance
+      router.push(href);
     },
     [router]
   );
 
   const quickNavigate = useCallback(
     (href: string) => {
-      setIsLoading(true);
       router.push(href);
-      setTimeout(() => setIsLoading(false), 200);
     },
     [router]
   );
 
   return {
-    isLoading,
+    isLoading: false, // Disable loading states for better performance
     navigateWithLoading,
     quickNavigate,
     setIsLoading,

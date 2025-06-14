@@ -1,4 +1,7 @@
-import { createClient } from "../../../../../supabase/server";
+"use client";
+
+import { useState, useEffect } from "react";
+import { createClient } from "../../../../../supabase/client";
 import {
   Card,
   CardContent,
@@ -17,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Building,
   Upload,
@@ -33,70 +37,190 @@ import {
   Globe,
   Sparkles,
   Info,
+  Loader2,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { SubmitButton } from "@/components/submit-button";
+import { useRouter } from "next/navigation";
+import { web3Service } from "@/lib/web3/contracts";
+import { ipfsService } from "@/lib/ipfs/service";
 
-async function createAssetAction(formData: FormData) {
-  "use server";
+export default function NewAssetPage() {
+  const router = useRouter();
+  const supabase = createClient();
 
-  const supabase = await createClient();
+  // State management
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return redirect("/sign-in");
-  }
-
-  const name = formData.get("name") as string;
-  const assetType = formData.get("asset_type") as string;
-  const description = formData.get("description") as string;
-  const location = formData.get("location") as string;
-  const originalValue = parseFloat(formData.get("original_value") as string);
-  const blockchain = formData.get("blockchain") as string;
-
-  const { error } = await supabase.from("assets").insert({
-    user_id: user.id,
-    name,
-    asset_type: assetType,
-    description,
-    location,
-    original_value: originalValue,
-    current_value: originalValue,
-    blockchain,
-    verification_status: "pending",
-    collateralization_status: "available",
+  // Form data
+  const [formData, setFormData] = useState({
+    name: "",
+    asset_type: "",
+    description: "",
+    location: "",
+    original_value: "",
+    blockchain: "ethereum",
   });
 
-  if (error) {
-    console.error("Error creating asset:", error);
-    return;
-  }
+  // Connect wallet on component mount
+  useEffect(() => {
+    const connectWallet = async () => {
+      try {
+        const address = await web3Service.connect();
+        setWalletAddress(address);
+      } catch (error) {
+        console.error("Wallet connection error:", error);
+      }
+    };
+    connectWallet();
+  }, []);
 
-  return redirect("/dashboard/assets");
-}
+  const handleFileUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    type: "documents" | "image"
+  ) => {
+    const files = event.target.files;
+    if (!files) return;
 
-export default async function NewAssetPage() {
-  const supabase = await createClient();
+    if (type === "documents") {
+      setSelectedFiles(Array.from(files));
+    } else if (type === "image") {
+      setImageFile(files[0]);
+    }
+  };
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
-  if (!user) {
-    return redirect("/sign-in");
-  }
+  const createAsset = async () => {
+    if (!walletAddress) {
+      setError("Please connect your wallet first");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setCurrentStep(1);
+
+    try {
+      // Step 1: Upload documents to IPFS
+      setCurrentStep(1);
+      let documentHashes: string[] = [];
+      let imageHash: string = "";
+
+      if (selectedFiles.length > 0) {
+        const uploadResults =
+          await ipfsService.uploadAssetDocuments(selectedFiles);
+        documentHashes = uploadResults.map((result) => result.hash);
+      }
+
+      if (imageFile) {
+        const imageResult = await ipfsService.uploadFile(imageFile, {
+          name: `${formData.name}_image`,
+          description: "Asset image",
+        });
+        imageHash = imageResult.hash;
+      }
+
+      // Step 2: Create metadata
+      setCurrentStep(2);
+      const metadataResult = await ipfsService.createAssetMetadata({
+        name: formData.name,
+        description: formData.description,
+        asset_type: formData.asset_type,
+        location: formData.location,
+        valuation: formData.original_value,
+        blockchain: formData.blockchain,
+        imageHash,
+        documentHashes,
+      });
+
+      // Step 3: Mint NFT on blockchain
+      setCurrentStep(3);
+      const mintResult = await web3Service.mintAssetNFT(
+        walletAddress,
+        metadataResult.url,
+        formData.original_value,
+        formData.blockchain
+      );
+
+      setTxHash(mintResult.txHash);
+
+      // Step 4: Save to database
+      setCurrentStep(4);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const { error: dbError } = await supabase.from("assets").insert({
+          user_id: user.id,
+          name: formData.name,
+          asset_type: formData.asset_type,
+          description: formData.description,
+          location: formData.location,
+          original_value: parseFloat(formData.original_value),
+          current_value: parseFloat(formData.original_value),
+          blockchain: formData.blockchain,
+          verification_status: "pending",
+          collateralization_status: "available",
+          token_address: web3Service.getContractAddress(formData.blockchain),
+          documents: JSON.stringify({
+            token_id: mintResult.tokenId,
+            metadata_uri: metadataResult.url,
+            ipfs_hash: metadataResult.hash,
+            transaction_hash: mintResult.txHash,
+            uploaded_files: selectedFiles.map((f) => f.name),
+          }),
+        });
+
+        if (dbError) {
+          console.error("Database error details:", {
+            message: dbError.message,
+            details: dbError.details,
+            hint: dbError.hint,
+            code: dbError.code,
+          });
+          // Don't fail the entire process for database errors, but log the details
+          setError(
+            `Database save failed: ${dbError.message || "Unknown error"}`
+          );
+        } else {
+          console.log("Asset successfully saved to database");
+        }
+      }
+
+      setSuccess(
+        `Asset successfully tokenized! Token ID: ${mintResult.tokenId}`
+      );
+
+      // Redirect after success
+      setTimeout(() => {
+        router.push("/dashboard/assets");
+      }, 3000);
+    } catch (error: any) {
+      console.error("Asset creation error:", error);
+      setError(error.message || "Failed to create asset");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <>
       <main className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 animate-fadeIn">
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="w-full px-6 py-6">
           {/* Enhanced Header with Back Button */}
           <div className="mb-8 animate-slideDown">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-6">
               <Button
                 variant="outline"
                 size="sm"
@@ -116,16 +240,69 @@ export default async function NewAssetPage() {
                 <span>Estimated time: 5-10 minutes</span>
               </div>
             </div>
-            <div className="text-center space-y-3">
-              <h1 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent">
+            <div className="space-y-4">
+              <h1 className="text-4xl font-bold tracking-tight text-gray-900">
                 Tokenize New Asset
               </h1>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              <p className="text-lg text-muted-foreground">
                 Transform your real-world assets into blockchain-based NFTs for
                 lending and investment opportunities
               </p>
             </div>
           </div>
+
+          {/* Status Messages */}
+          {error && (
+            <Alert className="mb-6 border-red-200 bg-red-50">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-700">
+                {error}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {success && (
+            <Alert className="mb-6 border-green-200 bg-green-50">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-700">
+                {success}
+                {txHash && (
+                  <div className="mt-2">
+                    <a
+                      href={web3Service.getBlockExplorerUrl(txHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                    >
+                      View Transaction <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Progress Indicator */}
+          {isLoading && (
+            <Card className="mb-6 border-blue-200 bg-blue-50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                  <div>
+                    <p className="font-medium text-blue-900">
+                      {currentStep === 1 && "Uploading documents to IPFS..."}
+                      {currentStep === 2 && "Creating metadata..."}
+                      {currentStep === 3 && "Minting NFT on blockchain..."}
+                      {currentStep === 4 && "Saving to database..."}
+                    </p>
+                    <p className="text-sm text-blue-700">
+                      Step {currentStep} of 4
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 animate-slideUp">
@@ -145,7 +322,7 @@ export default async function NewAssetPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-8">
-                  <form action={createAssetAction} className="space-y-8">
+                  <div className="space-y-8">
                     {/* Basic Information Section */}
                     <div className="space-y-6">
                       <div className="flex items-center gap-2 mb-4">
@@ -169,7 +346,10 @@ export default async function NewAssetPage() {
                           </Label>
                           <Input
                             id="name"
-                            name="name"
+                            value={formData.name}
+                            onChange={(e) =>
+                              handleInputChange("name", e.target.value)
+                            }
                             placeholder="e.g., Downtown Office Building"
                             required
                             className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 text-base"
@@ -183,7 +363,13 @@ export default async function NewAssetPage() {
                           >
                             Asset Type *
                           </Label>
-                          <Select name="asset_type" required>
+                          <Select
+                            value={formData.asset_type}
+                            onValueChange={(value) =>
+                              handleInputChange("asset_type", value)
+                            }
+                            required
+                          >
                             <SelectTrigger className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20">
                               <SelectValue placeholder="Select asset type" />
                             </SelectTrigger>
@@ -222,7 +408,10 @@ export default async function NewAssetPage() {
                         </Label>
                         <Textarea
                           id="description"
-                          name="description"
+                          value={formData.description}
+                          onChange={(e) =>
+                            handleInputChange("description", e.target.value)
+                          }
                           placeholder="Provide a comprehensive description of your asset including its condition, features, and any relevant details..."
                           required
                           rows={4}
@@ -255,7 +444,10 @@ export default async function NewAssetPage() {
                           </Label>
                           <Input
                             id="location"
-                            name="location"
+                            value={formData.location}
+                            onChange={(e) =>
+                              handleInputChange("location", e.target.value)
+                            }
                             placeholder="e.g., New York, NY, USA"
                             required
                             className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 text-base"
@@ -272,7 +464,13 @@ export default async function NewAssetPage() {
                           </Label>
                           <Input
                             id="original_value"
-                            name="original_value"
+                            value={formData.original_value}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "original_value",
+                                e.target.value
+                              )
+                            }
                             type="number"
                             step="0.01"
                             min="10000"
@@ -308,7 +506,13 @@ export default async function NewAssetPage() {
                           <Globe className="h-4 w-4" />
                           Select Blockchain Network *
                         </Label>
-                        <Select name="blockchain" required>
+                        <Select
+                          value={formData.blockchain}
+                          onValueChange={(value) =>
+                            handleInputChange("blockchain", value)
+                          }
+                          required
+                        >
                           <SelectTrigger className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20">
                             <SelectValue placeholder="Choose your preferred blockchain" />
                           </SelectTrigger>
@@ -353,21 +557,132 @@ export default async function NewAssetPage() {
                       </div>
                     </div>
 
+                    {/* File Upload Section */}
+                    <div className="space-y-6 border-t border-gray-200 pt-8">
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-bold text-orange-600">
+                            4
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Documentation & Images
+                        </h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <Label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                            <Camera className="h-4 w-4" />
+                            Asset Image
+                          </Label>
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleFileUpload(e, "image")}
+                              className="hidden"
+                              id="image-upload"
+                            />
+                            <label
+                              htmlFor="image-upload"
+                              className="cursor-pointer"
+                            >
+                              <Camera className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                              <p className="text-sm text-gray-600">
+                                {imageFile
+                                  ? imageFile.name
+                                  : "Click to upload asset image"}
+                              </p>
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <Label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                            <FileText className="h-4 w-4" />
+                            Supporting Documents
+                          </Label>
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                            <input
+                              type="file"
+                              multiple
+                              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                              onChange={(e) => handleFileUpload(e, "documents")}
+                              className="hidden"
+                              id="documents-upload"
+                            />
+                            <label
+                              htmlFor="documents-upload"
+                              className="cursor-pointer"
+                            >
+                              <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                              <p className="text-sm text-gray-600">
+                                {selectedFiles.length > 0
+                                  ? `${selectedFiles.length} files selected`
+                                  : "Click to upload documents"}
+                              </p>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Wallet Connection Status */}
+                    <div className="border-t border-gray-200 pt-6">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Shield className="h-5 w-5 text-blue-600" />
+                          <span className="font-medium text-gray-900">
+                            Wallet Status
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {walletAddress ? (
+                            <>
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                              <span className="text-sm text-green-700">
+                                {walletAddress.slice(0, 6)}...
+                                {walletAddress.slice(-4)}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <AlertTriangle className="h-4 w-4 text-orange-600" />
+                              <span className="text-sm text-orange-700">
+                                Not Connected
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Submit Button */}
                     <div className="border-t border-gray-200 pt-8">
-                      <SubmitButton
-                        className="w-full h-14 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-200 rounded-xl"
-                        pendingText="Creating Your Asset NFT..."
+                      <Button
+                        onClick={createAsset}
+                        disabled={isLoading || !walletAddress}
+                        className="w-full h-14 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-200 rounded-xl disabled:opacity-50"
                       >
-                        <Sparkles className="h-5 w-5 mr-2" />
-                        Tokenize Asset & Create NFT
-                      </SubmitButton>
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                            Creating Your Asset NFT...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-5 w-5 mr-2" />
+                            Tokenize Asset & Create NFT
+                          </>
+                        )}
+                      </Button>
                       <p className="text-center text-sm text-gray-500 mt-3">
                         By proceeding, you agree to our terms and understand
                         that your asset will undergo verification
                       </p>
                     </div>
-                  </form>
+                  </div>
                 </CardContent>
               </Card>
             </div>

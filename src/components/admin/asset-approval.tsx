@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -36,7 +36,12 @@ import {
   User,
   Building,
   TrendingUp,
+  ExternalLink,
+  Loader2,
 } from "lucide-react";
+import { web3Service } from "@/lib/web3/contracts";
+import { ipfsService } from "@/lib/ipfs/service";
+import { createClient } from "../../../supabase/client";
 
 interface AssetApprovalSectionProps {
   onBack: () => void;
@@ -45,17 +50,22 @@ interface AssetApprovalSectionProps {
 interface Asset {
   id: string;
   name: string;
-  type: string;
-  value: number;
-  submittedBy: string;
-  submittedDate: string;
-  status: "pending" | "under-review" | "approved" | "rejected";
+  asset_type: string;
+  original_value: number;
+  user_id: string;
+  created_at: string;
+  verification_status: "pending" | "under-review" | "approved" | "rejected";
   location: string;
   description: string;
-  documents: string[];
-  riskScore: number;
-  verificationStatus: string;
-  collateralRatio: number;
+  blockchain: string;
+  token_id?: number;
+  contract_address?: string;
+  metadata_uri?: string;
+  ipfs_hash?: string;
+  transaction_hash?: string;
+  documents?: string[];
+  riskScore?: number;
+  collateralRatio?: number;
 }
 
 export default function AssetApprovalSection({
@@ -64,6 +74,34 @@ export default function AssetApprovalSection({
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [reviewComment, setReviewComment] = useState("");
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [approving, setApproving] = useState<string | null>(null);
+  const supabase = createClient();
+
+  // Fetch assets from database
+  useEffect(() => {
+    fetchAssets();
+  }, []);
+
+  const fetchAssets = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("assets")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setAssets(data || []);
+    } catch (error: any) {
+      console.error("Error fetching assets:", error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Mock data - in production, this would come from your backend
   const pendingAssets: Asset[] = [
@@ -125,13 +163,121 @@ export default function AssetApprovalSection({
 
   const filteredAssets =
     filterStatus === "all"
-      ? pendingAssets
-      : pendingAssets.filter((asset) => asset.status === filterStatus);
+      ? assets
+      : assets.filter((asset) => asset.verification_status === filterStatus);
 
-  const handleApproval = (assetId: string, approved: boolean) => {
-    // TODO: Implement approval logic
-    console.log(`Asset ${assetId} ${approved ? "approved" : "rejected"}`);
-    alert(`Asset ${approved ? "approved" : "rejected"} successfully!`);
+  const handleApproval = async (assetId: string, approved: boolean) => {
+    try {
+      setApproving(assetId);
+      setError(null);
+
+      const asset = assets.find((a) => a.id === assetId);
+      if (!asset) {
+        throw new Error("Asset not found");
+      }
+
+      if (approved) {
+        // If approving and no NFT exists yet, mint it
+        if (!asset.token_id && asset.metadata_uri) {
+          try {
+            // Connect wallet first
+            const adminAddress = await web3Service.connect();
+
+            // Mint NFT for the asset owner
+            const mintResult = await web3Service.mintAssetNFT(
+              asset.user_id, // Assuming user_id is the wallet address
+              asset.metadata_uri,
+              asset.original_value.toString(),
+              asset.blockchain
+            );
+
+            // Update asset with NFT details
+            const { error: updateError } = await supabase
+              .from("assets")
+              .update({
+                verification_status: "approved",
+                token_id: mintResult.tokenId,
+                contract_address: web3Service.getContractAddress(
+                  asset.blockchain
+                ),
+                transaction_hash: mintResult.txHash,
+              })
+              .eq("id", assetId);
+
+            if (updateError) throw updateError;
+
+            // Update metadata to reflect approval
+            if (asset.ipfs_hash) {
+              await ipfsService.updateAssetMetadata(asset.ipfs_hash, {
+                properties: {
+                  ...asset,
+                  verification_status: "approved",
+                  approved_at: new Date().toISOString(),
+                  token_id: mintResult.tokenId.toString(),
+                  contract_address: web3Service.getContractAddress(
+                    asset.blockchain
+                  ),
+                },
+              });
+            }
+          } catch (web3Error: any) {
+            console.error("Web3 error:", web3Error);
+            // Still update database even if NFT minting fails
+            const { error: updateError } = await supabase
+              .from("assets")
+              .update({
+                verification_status: "approved",
+              })
+              .eq("id", assetId);
+
+            if (updateError) throw updateError;
+          }
+        } else {
+          // Just update status if NFT already exists
+          const { error: updateError } = await supabase
+            .from("assets")
+            .update({
+              verification_status: "approved",
+            })
+            .eq("id", assetId);
+
+          if (updateError) throw updateError;
+        }
+      } else {
+        // Rejection - just update status
+        const { error: updateError } = await supabase
+          .from("assets")
+          .update({
+            verification_status: "rejected",
+          })
+          .eq("id", assetId);
+
+        if (updateError) throw updateError;
+
+        // Update metadata to reflect rejection
+        if (asset.ipfs_hash) {
+          await ipfsService.updateAssetMetadata(asset.ipfs_hash, {
+            properties: {
+              ...asset,
+              verification_status: "rejected",
+              rejected_at: new Date().toISOString(),
+              rejection_reason:
+                reviewComment || "Asset did not meet verification requirements",
+            },
+          });
+        }
+      }
+
+      // Refresh assets list
+      await fetchAssets();
+      setSelectedAsset(null);
+      setReviewComment("");
+    } catch (error: any) {
+      console.error("Approval error:", error);
+      setError(error.message || "Failed to process approval");
+    } finally {
+      setApproving(null);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -149,6 +295,20 @@ export default function AssetApprovalSection({
     }
   };
 
+  const getAssetCounts = () => {
+    return {
+      total: assets.length,
+      pending: assets.filter((a) => a.verification_status === "pending").length,
+      underReview: assets.filter(
+        (a) => a.verification_status === "under-review"
+      ).length,
+      approved: assets.filter((a) => a.verification_status === "approved")
+        .length,
+      rejected: assets.filter((a) => a.verification_status === "rejected")
+        .length,
+    };
+  };
+
   const getRiskColor = (score: number) => {
     if (score <= 2) return "text-green-600";
     if (score <= 3) return "text-yellow-600";
@@ -156,8 +316,27 @@ export default function AssetApprovalSection({
     return "text-red-600";
   };
 
+  const counts = getAssetCounts();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <span className="ml-2 text-gray-600">Loading assets...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 p-6">
+      {/* Error Alert */}
+      {error && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertTriangle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-700">{error}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -194,7 +373,9 @@ export default function AssetApprovalSection({
                 <p className="text-sm font-medium text-yellow-700">
                   Total Pending
                 </p>
-                <p className="text-3xl font-bold text-yellow-900">3</p>
+                <p className="text-3xl font-bold text-yellow-900">
+                  {counts.pending}
+                </p>
                 <p className="text-sm text-yellow-600 mt-1">Awaiting review</p>
               </div>
               <div className="w-12 h-12 bg-yellow-200 rounded-lg flex items-center justify-center">
@@ -211,7 +392,16 @@ export default function AssetApprovalSection({
                 <p className="text-sm font-medium text-green-700">
                   Total Value
                 </p>
-                <p className="text-3xl font-bold text-green-900">$2.97M</p>
+                <p className="text-3xl font-bold text-green-900">
+                  $
+                  {(
+                    assets.reduce(
+                      (sum, asset) => sum + asset.original_value,
+                      0
+                    ) / 1000000
+                  ).toFixed(2)}
+                  M
+                </p>
                 <p className="text-sm text-green-600 mt-1">Combined assets</p>
               </div>
               <div className="w-12 h-12 bg-green-200 rounded-lg flex items-center justify-center">
@@ -242,12 +432,14 @@ export default function AssetApprovalSection({
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-700">This Month</p>
-                <p className="text-3xl font-bold text-blue-900">12</p>
-                <p className="text-sm text-blue-600 mt-1">Applications</p>
+                <p className="text-sm font-medium text-blue-700">Approved</p>
+                <p className="text-3xl font-bold text-blue-900">
+                  {counts.approved}
+                </p>
+                <p className="text-sm text-blue-600 mt-1">Ready for lending</p>
               </div>
               <div className="w-12 h-12 bg-blue-200 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-blue-700" />
+                <CheckCircle className="w-6 h-6 text-blue-700" />
               </div>
             </div>
           </CardContent>

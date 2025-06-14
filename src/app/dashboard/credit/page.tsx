@@ -37,8 +37,10 @@ import {
   Building,
   Percent,
   BarChart3,
+  Bell,
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
+import { Input } from "@/components/ui/input";
 
 interface UserCredit {
   available: number;
@@ -70,11 +72,17 @@ interface CreditScoreFactors {
   newCredit: number; // 10%
 }
 
-export default function CreditPage() {
+export default function CreditScorePage() {
   const [user, setUser] = useState<User | null>(null);
   const [userCredit, setUserCredit] = useState<UserCredit | null>(null);
-  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
-  const [creditFactors, setCreditFactors] = useState<CreditScoreFactors | null>(null);
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>(
+    []
+  );
+  const [creditFactors, setCreditFactors] = useState<CreditScoreFactors | null>(
+    null
+  );
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -94,92 +102,38 @@ export default function CreditPage() {
   }, []);
 
   const fetchUserCredit = async (userId: string) => {
-    // Mock credit data with calculated credit score
-    const mockCredit: UserCredit = {
-      available: 125000,
-      total: 150000, // Higher limit due to good credit score
-      used: 25000,
-      level: "Platinum",
-      nextTierAmount: 0, // Already at highest tier
-      monthlySpent: 8500,
-      paymentHistory: "Excellent",
-      creditScore: 785, // High credit score
+    // This would fetch real credit data from your database
+    // For now, return default values until real data is available
+    const defaultCredit: UserCredit = {
+      available: 0,
+      total: 0,
+      used: 0,
+      level: "Bronze",
+      nextTierAmount: 50000,
+      monthlySpent: 0,
+      paymentHistory: "Fair",
+      creditScore: 650,
     };
 
-    setUserCredit(mockCredit);
+    setUserCredit(defaultCredit);
   };
 
   const fetchPaymentHistory = async (userId: string) => {
-    // Mock payment history data
-    const mockHistory: PaymentHistoryItem[] = [
-      {
-        id: "1",
-        amount: 2500,
-        dueDate: "2024-01-15",
-        paidDate: "2024-01-14",
-        status: "on_time",
-        loanId: "loan_1",
-        assetName: "Downtown Office Building",
-      },
-      {
-        id: "2",
-        amount: 3200,
-        dueDate: "2024-02-15",
-        paidDate: "2024-02-15",
-        status: "on_time",
-        loanId: "loan_2",
-        assetName: "Warehouse Property",
-      },
-      {
-        id: "3",
-        amount: 2500,
-        dueDate: "2024-03-15",
-        paidDate: "2024-03-20",
-        status: "late",
-        loanId: "loan_1",
-        assetName: "Downtown Office Building",
-        daysLate: 5,
-      },
-      {
-        id: "4",
-        amount: 3200,
-        dueDate: "2024-04-15",
-        paidDate: "2024-04-14",
-        status: "on_time",
-        loanId: "loan_2",
-        assetName: "Warehouse Property",
-      },
-      {
-        id: "5",
-        amount: 2500,
-        dueDate: "2024-05-15",
-        paidDate: "2024-05-13",
-        status: "on_time",
-        loanId: "loan_1",
-        assetName: "Downtown Office Building",
-      },
-      {
-        id: "6",
-        amount: 3200,
-        dueDate: "2024-06-15",
-        paidDate: "2024-06-15",
-        status: "on_time",
-        loanId: "loan_2",
-        assetName: "Warehouse Property",
-      },
-    ];
-
-    setPaymentHistory(mockHistory);
+    // This would fetch real payment history from your database
+    // For now, return empty array until real data is available
+    const history: PaymentHistoryItem[] = [];
+    setPaymentHistory(history);
   };
 
   const fetchCreditFactors = async (userId: string) => {
-    // Calculate credit score factors
+    // This would calculate real credit score factors from your database
+    // For now, return default values until real data is available
     const factors: CreditScoreFactors = {
-      paymentHistory: 92, // Excellent payment history
-      creditUtilization: 85, // Good utilization (16.7%)
-      creditLength: 78, // Good credit history length
-      loanDiversity: 82, // Good mix of loan types
-      newCredit: 88, // Responsible new credit usage
+      paymentHistory: 65, // Default fair payment history
+      creditUtilization: 70, // Default utilization
+      creditLength: 60, // Default credit history length
+      loanDiversity: 50, // Default loan diversity
+      newCredit: 75, // Default new credit usage
     };
 
     setCreditFactors(factors);
@@ -195,7 +149,8 @@ export default function CreditPage() {
   };
 
   const getCreditScoreColor = (score: number) => {
-    if (score >= 750) return "text-emerald-600 bg-emerald-50 border-emerald-200";
+    if (score >= 750)
+      return "text-emerald-600 bg-emerald-50 border-emerald-200";
     if (score >= 700) return "text-blue-600 bg-blue-50 border-blue-200";
     if (score >= 650) return "text-yellow-600 bg-yellow-50 border-yellow-200";
     if (score >= 600) return "text-orange-600 bg-orange-50 border-orange-200";
@@ -280,6 +235,93 @@ export default function CreditPage() {
     }
   };
 
+  const handleNotifyMe = () => {
+    if (email) {
+      setSubscribed(true);
+    }
+  };
+
+  const features = [
+    {
+      icon: BarChart3,
+      title: "Real-Time Credit Scoring",
+      description:
+        "Dynamic credit assessment based on your asset portfolio, payment history, and DeFi activity",
+      status: "In Development",
+      color: "blue",
+    },
+    {
+      icon: Shield,
+      title: "Blockchain-Based Verification",
+      description:
+        "Immutable credit history stored on-chain with privacy-preserving technology",
+      status: "Planned",
+      color: "green",
+    },
+    {
+      icon: Target,
+      title: "Multi-Asset Collateral",
+      description:
+        "Credit scoring that considers your entire tokenized asset portfolio",
+      status: "In Development",
+      color: "purple",
+    },
+    {
+      icon: TrendingUp,
+      title: "Credit Improvement Tools",
+      description:
+        "AI-powered recommendations to improve your credit score and borrowing capacity",
+      status: "Coming Soon",
+      color: "orange",
+    },
+    {
+      icon: Award,
+      title: "Credit Rewards Program",
+      description:
+        "Earn rewards and better rates for maintaining excellent credit history",
+      status: "Planned",
+      color: "indigo",
+    },
+    {
+      icon: Bell,
+      title: "Score Monitoring",
+      description:
+        "Real-time alerts for credit score changes and improvement opportunities",
+      status: "Coming Soon",
+      color: "red",
+    },
+  ];
+
+  const benefits = [
+    {
+      title: "Better Loan Terms",
+      description:
+        "Higher credit scores unlock lower interest rates and higher loan amounts",
+      icon: CreditCard,
+      example: "Get 2-4% lower APR with excellent credit score",
+    },
+    {
+      title: "Instant Approvals",
+      description:
+        "Pre-approved credit lines based on your verified credit score",
+      icon: Zap,
+      example: "Instant approval for loans up to $500K with 750+ score",
+    },
+    {
+      title: "Portfolio Optimization",
+      description: "Credit-aware asset allocation recommendations",
+      icon: Target,
+      example: "Optimize asset mix to maximize borrowing capacity",
+    },
+    {
+      title: "Cross-Platform Recognition",
+      description:
+        "Your TangibleFi credit score recognized across DeFi protocols",
+      icon: Star,
+      example: "Use your score on Compound, Aave, and other platforms",
+    },
+  ];
+
   if (!userCredit || !creditFactors) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -292,280 +334,212 @@ export default function CreditPage() {
   }
 
   const eligibility = getLoanEligibility(userCredit.creditScore);
-  const onTimePayments = paymentHistory.filter(p => p.status === "on_time").length;
+  const onTimePayments = paymentHistory.filter(
+    (p) => p.status === "on_time"
+  ).length;
   const totalPayments = paymentHistory.length;
-  const onTimePercentage = totalPayments > 0 ? (onTimePayments / totalPayments) * 100 : 0;
+  const onTimePercentage =
+    totalPayments > 0 ? (onTimePayments / totalPayments) * 100 : 0;
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent">
-              Credit Management
-            </h1>
-            <p className="text-muted-foreground mt-2 text-lg">
-              Monitor your credit score and loan eligibility
-            </p>
+    <div className="w-full px-6 py-6 space-y-8">
+      {/* Header */}
+      <div className="space-y-4">
+        <Badge className="bg-orange-100 text-orange-800 text-sm">
+          Coming Soon
+        </Badge>
+        <h1 className="text-4xl font-bold text-gray-900">
+          Credit Score & Rating
+        </h1>
+        <p className="text-lg text-gray-600">
+          Build your on-chain credit history and unlock better borrowing terms
+          with our comprehensive credit scoring system.
+        </p>
+      </div>
+
+      {/* Main Coming Soon Card */}
+      <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-purple-50">
+        <CardContent className="p-8 text-center">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CreditCard className="w-8 h-8 text-blue-600" />
           </div>
-          <Button
-            asChild
-            size="lg"
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-          >
-            <a href="/dashboard/loans/new">
-              <Plus className="h-5 w-5 mr-2" />
-              Apply for Loan
-            </a>
-          </Button>
-        </div>
 
-        {/* Credit Score Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-          {/* Credit Score Card */}
-          <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm col-span-1">
-            <CardHeader className="text-center pb-4">
-              <CardTitle className="flex items-center justify-center gap-2 text-xl">
-                <Award className="h-6 w-6 text-yellow-600" />
-                Credit Score
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <div className="relative mb-6">
-                <div className="w-32 h-32 mx-auto mb-4">
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      stroke="#e5e7eb"
-                      strokeWidth="8"
-                      fill="none"
-                    />
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      stroke="#10b981"
-                      strokeWidth="8"
-                      fill="none"
-                      strokeDasharray={`${(userCredit.creditScore / 850) * 251.2} 251.2`}
-                      className="transition-all duration-1000 ease-out"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <p className="text-3xl font-bold text-gray-900">
-                        {userCredit.creditScore}
-                      </p>
-                      <p className="text-sm text-gray-600">/ 850</p>
-                    </div>
-                  </div>
-                </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Revolutionary On-Chain Credit Scoring
+          </h2>
+
+          <p className="text-gray-600 mb-6 max-w-lg mx-auto">
+            Our advanced credit scoring system analyzes your asset portfolio,
+            payment history, and DeFi activity to provide accurate, real-time
+            credit assessments.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+            {!subscribed ? (
+              <>
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleNotifyMe}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                >
+                  <Bell className="w-4 h-4" />
+                  Notify Me
+                </Button>
+              </>
+            ) : (
+              <div className="flex items-center justify-center gap-2 text-green-600 font-medium">
+                <CheckCircle className="w-5 h-5" />
+                You'll be notified when Credit Scoring is available!
               </div>
-              
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border font-semibold ${getCreditScoreColor(userCredit.creditScore)}`}>
-                <Star className="h-4 w-4" />
-                {getCreditScoreRating(userCredit.creditScore)}
-              </div>
+            )}
+          </div>
 
-              <div className="mt-6 space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">On-time Payments</span>
-                  <span className="font-semibold text-emerald-600">{onTimePercentage.toFixed(1)}%</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Credit Utilization</span>
-                  <span className="font-semibold text-blue-600">{getCreditUsagePercentage().toFixed(1)}%</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Credit History</span>
-                  <span className="font-semibold text-purple-600">2.5 years</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="mt-6 flex items-center justify-center gap-6 text-sm text-gray-500">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Expected Q2 2024
+            </div>
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              Privacy-First
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-          {/* Loan Eligibility */}
-          <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm col-span-2">
-            <CardHeader className="border-b border-gray-100">
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Target className="h-6 w-6 text-blue-600" />
-                Loan Eligibility
-              </CardTitle>
-              <CardDescription>
-                Based on your credit score of {userCredit.creditScore}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div className={`p-4 rounded-xl border bg-${eligibility.color}-50 border-${eligibility.color}-200`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <DollarSign className={`h-5 w-5 text-${eligibility.color}-600`} />
-                    <span className={`text-sm font-semibold text-${eligibility.color}-600 uppercase tracking-wide`}>
-                      Max Loan Amount
-                    </span>
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(eligibility.maxAmount)}
-                  </p>
-                </div>
+      {/* Features Grid */}
+      <div>
+        <h3 className="text-2xl font-bold text-gray-900 mb-6">
+          Advanced Credit Features
+        </h3>
 
-                <div className={`p-4 rounded-xl border bg-${eligibility.color}-50 border-${eligibility.color}-200`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Percent className={`h-5 w-5 text-${eligibility.color}-600`} />
-                    <span className={`text-sm font-semibold text-${eligibility.color}-600 uppercase tracking-wide`}>
-                      Interest Rate
-                    </span>
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {eligibility.interestRate}% APR
-                  </p>
-                </div>
-
-                <div className={`p-4 rounded-xl border bg-${eligibility.color}-50 border-${eligibility.color}-200`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Shield className={`h-5 w-5 text-${eligibility.color}-600`} />
-                    <span className={`text-sm font-semibold text-${eligibility.color}-600 uppercase tracking-wide`}>
-                      Approval Status
-                    </span>
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {eligibility.status}
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
-                <div className="flex items-start gap-3">
-                  <Info className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <h4 className="font-semibold text-blue-900 mb-2">
-                      How to Improve Your Credit Score
-                    </h4>
-                    <ul className="text-sm text-blue-800 space-y-1">
-                      <li>• Pay all loan EMIs on time</li>
-                      <li>• Keep credit utilization below 30%</li>
-                      <li>• Maintain a longer credit history</li>
-                      <li>• Diversify your loan portfolio</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Credit Score Factors */}
-        <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm mb-8">
-          <CardHeader className="border-b border-gray-100">
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <BarChart3 className="h-6 w-6 text-purple-600" />
-              Credit Score Factors
-            </CardTitle>
-            <CardDescription>
-              Breakdown of factors affecting your credit score
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-              {[
-                { name: "Payment History", score: creditFactors.paymentHistory, weight: "35%", icon: History },
-                { name: "Credit Utilization", score: creditFactors.creditUtilization, weight: "30%", icon: CreditCard },
-                { name: "Credit Length", score: creditFactors.creditLength, weight: "15%", icon: Calendar },
-                { name: "Loan Diversity", score: creditFactors.loanDiversity, weight: "10%", icon: Building },
-                { name: "New Credit", score: creditFactors.newCredit, weight: "10%", icon: Zap },
-              ].map((factor, index) => {
-                const Icon = factor.icon;
-                const getScoreColor = (score: number) => {
-                  if (score >= 80) return "emerald";
-                  if (score >= 60) return "blue";
-                  if (score >= 40) return "yellow";
-                  return "red";
-                };
-                const color = getScoreColor(factor.score);
-
-                return (
-                  <div key={factor.name} className="text-center">
-                    <div className={`w-16 h-16 mx-auto mb-3 bg-${color}-100 rounded-full flex items-center justify-center`}>
-                      <Icon className={`h-8 w-8 text-${color}-600`} />
-                    </div>
-                    <h4 className="font-semibold text-gray-900 mb-1">{factor.name}</h4>
-                    <p className="text-2xl font-bold text-gray-900 mb-1">{factor.score}/100</p>
-                    <p className="text-sm text-gray-600">{factor.weight} weight</p>
-                    <div className="mt-3">
-                      <Progress 
-                        value={factor.score} 
-                        className={`h-2 bg-${color}-100`}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {features.map((feature, index) => {
+            const IconComponent = feature.icon;
+            return (
+              <Card key={index} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div
+                      className={`w-10 h-10 bg-${feature.color}-100 rounded-lg flex items-center justify-center flex-shrink-0`}
+                    >
+                      <IconComponent
+                        className={`w-5 h-5 text-${feature.color}-600`}
                       />
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Payment History */}
-        <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
-          <CardHeader className="border-b border-gray-100">
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <History className="h-6 w-6 text-emerald-600" />
-              Payment History
-            </CardTitle>
-            <CardDescription>
-              Your recent loan payment track record ({onTimePayments}/{totalPayments} payments on time)
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              {paymentHistory.map((payment) => (
-                <div
-                  key={payment.id}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-gray-50/30 hover:shadow-md transition-all duration-200"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      {getPaymentStatusIcon(payment.status)}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">{payment.assetName}</p>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold text-gray-900">
+                          {feature.title}
+                        </h4>
+                        <Badge
+                          variant="outline"
+                          className={`text-xs bg-${feature.color}-50 text-${feature.color}-700 border-${feature.color}-200`}
+                        >
+                          {feature.status}
+                        </Badge>
+                      </div>
                       <p className="text-sm text-gray-600">
-                        Due: {new Date(payment.dueDate).toLocaleDateString()} • 
-                        Paid: {new Date(payment.paidDate).toLocaleDateString()}
-                        {payment.daysLate && (
-                          <span className="text-yellow-600"> ({payment.daysLate} days late)</span>
-                        )}
+                        {feature.description}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right flex items-center gap-3">
-                    <div>
-                      <p className="font-bold text-lg text-gray-900">
-                        ${payment.amount.toLocaleString()}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={`${getPaymentStatusColor(payment.status)} font-medium capitalize`}
-                    >
-                      {payment.status.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 text-center">
-              <Button variant="outline" size="lg">
-                <History className="h-4 w-4 mr-2" />
-                View Full Payment History
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
-    </main>
+
+      {/* Benefits Section */}
+      <div>
+        <h3 className="text-2xl font-bold text-gray-900 mb-6">
+          Credit Score Benefits
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {benefits.map((benefit, index) => {
+            const IconComponent = benefit.icon;
+            return (
+              <Card key={index} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <IconComponent className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 mb-2">
+                        {benefit.title}
+                      </h4>
+                      <p className="text-sm text-gray-600 mb-3">
+                        {benefit.description}
+                      </p>
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-xs text-gray-500 font-medium">
+                          Example: {benefit.example}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Timeline */}
+      <Card className="bg-gradient-to-r from-gray-50 to-blue-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-blue-600" />
+            Development Timeline
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <div>
+                <p className="font-medium text-gray-900">
+                  Q1 2024 - Foundation
+                </p>
+                <p className="text-sm text-gray-600">
+                  Basic credit scoring algorithm and data collection
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+              <div>
+                <p className="font-medium text-gray-900">
+                  Q2 2024 - Beta Launch
+                </p>
+                <p className="text-sm text-gray-600">
+                  Limited beta with select users and basic features
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
+              <div>
+                <p className="font-medium text-gray-900">
+                  Q3 2024 - Full Release
+                </p>
+                <p className="text-sm text-gray-600">
+                  Complete credit scoring system with all features
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
