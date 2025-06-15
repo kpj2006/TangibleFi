@@ -20,6 +20,11 @@ export async function createLoanRequestAction(formData: FormData) {
   const interestRate = parseFloat(formData.get("interest_rate") as string);
   const purpose = formData.get("purpose") as string;
   const blockchain = formData.get("blockchain") as string;
+  const crossChain = formData.get("cross_chain") === "true";
+  const sourceChain = formData.get("source_chain") as string;
+
+  // Convert months to seconds for smart contract
+  const loanTermSeconds = loanTermMonths * 30 * 24 * 60 * 60;
 
   // Calculate monthly payment (simple interest calculation)
   const monthlyInterestRate = interestRate / 100 / 12;
@@ -33,6 +38,22 @@ export async function createLoanRequestAction(formData: FormData) {
   const nextPaymentDate = new Date();
   nextPaymentDate.setDate(nextPaymentDate.getDate() + 30);
 
+  // Prepare smart contract parameters
+  const smartContractData = {
+    tokenId: 0, // Will be set from asset data
+    accountTokenId: 0, // Will be generated
+    duration: loanTermSeconds,
+    amount: loanAmount.toString(),
+    tokenAddress: "0x0000000000000000000000000000000000000000", // USDC or other token
+    sourceChainSelector: crossChain ? getChainSelector(sourceChain) : 0,
+    sourceAddress: crossChain
+      ? user.id
+      : "0x0000000000000000000000000000000000000000",
+    blockchain,
+    crossChain,
+    sourceChain: sourceChain || blockchain,
+  };
+
   const { error } = await supabase.from("loans").insert({
     user_id: user.id,
     asset_id: assetId,
@@ -45,6 +66,9 @@ export async function createLoanRequestAction(formData: FormData) {
     loan_status: "pending",
     blockchain,
     purpose,
+    smart_contract_data: smartContractData,
+    cross_chain: crossChain,
+    source_chain: sourceChain,
   });
 
   if (error) {
@@ -60,4 +84,14 @@ export async function createLoanRequestAction(formData: FormData) {
     .eq("user_id", user.id);
 
   return redirect("/dashboard/loans");
-} 
+}
+
+// Helper function to get chain selector for CCIP
+function getChainSelector(network: string): number {
+  const chainSelectors: Record<string, number> = {
+    ethereum: 5009297550715157269,
+    polygon: 4051577828743386545,
+    arbitrum: 4949039107694359620,
+  };
+  return chainSelectors[network] || 0;
+}
