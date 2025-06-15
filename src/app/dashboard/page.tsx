@@ -327,8 +327,8 @@ export default function Dashboard() {
     ) || [];
 
   // Calculate portfolio metrics with real data
-  const totalCollateralValue = portfolioData.totalAssetValue || 0;
-  const totalLoanBalance = portfolioData.totalLoanBalance || 0;
+  const totalCollateralValue = portfolioData.metrics.totalAssetValue || 0;
+  const totalLoanBalance = portfolioData.metrics.totalLoanBalance || 0;
   const totalCryptoValue = portfolio?.totalValue || 0;
   const netWorth = totalCollateralValue + totalCryptoValue - totalLoanBalance;
   const healthRatio = calculateHealthRatio(

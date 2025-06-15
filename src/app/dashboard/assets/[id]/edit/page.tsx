@@ -41,8 +41,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "@/components/ui/use-toast";
-import { use } from "react";
-
 interface Asset {
   id: string;
   name: string;
@@ -57,13 +55,9 @@ interface Asset {
   created_at: string;
 }
 
-export default function EditAssetPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  // Fix Next.js 15 params Promise issue
-  const { id } = use(params);
+export default function EditAssetPage({ params }: { params: { id: string } }) {
+  // Get the id from params directly
+  const { id } = params;
   const router = useRouter();
   const [asset, setAsset] = useState<Asset | null>(null);
   const [loading, setLoading] = useState(true);

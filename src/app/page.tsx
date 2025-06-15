@@ -45,10 +45,10 @@ import {
 } from "lucide-react";
 import { createClient } from "../../supabase/client";
 import Link from "next/link";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 
-// Custom hook for scroll-based animations
-function useScrollAnimation(threshold = 0) {
+// Custom hook for scroll-based animations - Optimized
+function useScrollAnimation(threshold = 0.1) {
   const [isVisible, setIsVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -57,49 +57,57 @@ function useScrollAnimation(threshold = 0) {
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsVisible(true);
+          // Disconnect after first trigger for performance
+          observer.disconnect();
         }
       },
-      { threshold, rootMargin: "100px 0px 0px 0px" }
+      {
+        threshold,
+        rootMargin: "50px 0px -50px 0px", // Optimized margins
+      }
     );
 
     if (ref.current) {
       observer.observe(ref.current);
     }
 
-    return () => {
-      if (ref.current) {
-        observer.unobserve(ref.current);
-      }
-    };
+    return () => observer.disconnect();
   }, [threshold]);
 
   return [ref, isVisible] as const;
 }
 
-// Enhanced scroll animations hook with stagger support
-function useStaggeredAnimation(itemCount: number, delay = 100) {
+// Enhanced scroll animations hook with stagger support - Optimized
+function useStaggeredAnimation(itemCount: number, delay = 80) {
   const [visibleItems, setVisibleItems] = useState<boolean[]>(
     new Array(itemCount).fill(false)
   );
   const ref = useRef<HTMLDivElement>(null);
+  const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
+          // Clear any existing timeouts
+          timeoutsRef.current.forEach(clearTimeout);
+          timeoutsRef.current = [];
+
           // Stagger the animation of items
           for (let i = 0; i < itemCount; i++) {
-            setTimeout(() => {
+            const timeout = setTimeout(() => {
               setVisibleItems((prev) => {
                 const newState = [...prev];
                 newState[i] = true;
                 return newState;
               });
             }, i * delay);
+            timeoutsRef.current.push(timeout);
           }
+          observer.disconnect();
         }
       },
-      { threshold: 0, rootMargin: "50px 0px 0px 0px" }
+      { threshold: 0.1, rootMargin: "30px 0px -30px 0px" }
     );
 
     if (ref.current) {
@@ -107,41 +115,63 @@ function useStaggeredAnimation(itemCount: number, delay = 100) {
     }
 
     return () => {
-      if (ref.current) {
-        observer.unobserve(ref.current);
-      }
+      observer.disconnect();
+      timeoutsRef.current.forEach(clearTimeout);
     };
   }, [itemCount, delay]);
 
   return [ref, visibleItems] as const;
 }
 
-// Parallax scroll hook
-function useParallax(factor = 0.5) {
+// Optimized Parallax scroll hook with throttling
+function useParallax(factor = 0.3) {
   const [transform, setTransform] = useState("translateY(0px)");
   const ref = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number>();
 
   useEffect(() => {
     const handleScroll = () => {
-      if (ref.current) {
-        const rect = ref.current.getBoundingClientRect();
-        const scrolled = window.pageYOffset;
-        const rate = scrolled * factor;
-        setTransform(`translateY(${rate}px)`);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+
+      rafRef.current = requestAnimationFrame(() => {
+        if (ref.current) {
+          const scrolled = window.pageYOffset;
+          const rate = scrolled * factor;
+          setTransform(`translateY(${rate}px)`);
+        }
+      });
+    };
+
+    // Throttled scroll listener
+    let ticking = false;
+    const throttledScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          handleScroll();
+          ticking = false;
+        });
+        ticking = true;
       }
     };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", throttledScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", throttledScroll);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
   }, [factor]);
 
   return [ref, transform] as const;
 }
 
-// Animated Counter Component
+// Optimized Animated Counter Component
 function AnimatedCounter({
   targetValue,
-  duration = 2000,
+  duration = 1500,
   prefix = "",
   suffix = "",
   className = "",
@@ -155,7 +185,8 @@ function AnimatedCounter({
   decimals?: number;
 }) {
   const [currentValue, setCurrentValue] = useState(0);
-  const [ref, isVisible] = useScrollAnimation(0);
+  const [ref, isVisible] = useScrollAnimation(0.2);
+  const rafRef = useRef<number>();
 
   useEffect(() => {
     if (!isVisible) return;
@@ -168,22 +199,26 @@ function AnimatedCounter({
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
 
-      // Easing function for smooth animation
-      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-
-      const newValue = startValue + (targetValue - startValue) * easeOutQuart;
+      // Smooth easing function
+      const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+      const newValue = startValue + (targetValue - startValue) * easeOutCubic;
       setCurrentValue(newValue);
 
       if (progress < 1) {
-        requestAnimationFrame(updateValue);
+        rafRef.current = requestAnimationFrame(updateValue);
       }
     };
 
     const timer = setTimeout(() => {
-      requestAnimationFrame(updateValue);
+      rafRef.current = requestAnimationFrame(updateValue);
     }, 100);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
   }, [targetValue, duration, isVisible]);
 
   const formatNumber = (num: number) => {
@@ -200,6 +235,40 @@ function AnimatedCounter({
         {formatNumber(currentValue)}
         {suffix}
       </span>
+    </div>
+  );
+}
+
+// Optimized Animated Text Component
+function AnimatedText({
+  text,
+  delay = 0,
+  className = "",
+}: {
+  text: string;
+  delay?: number;
+  className?: string;
+}) {
+  const [ref, isVisible] = useScrollAnimation(0.1);
+  const words = useMemo(() => text.split(" "), [text]);
+
+  return (
+    <div ref={ref} className={className}>
+      {words.map((word, index) => (
+        <span
+          key={index}
+          className={`inline-block transition-all duration-600 ease-out will-change-transform ${
+            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
+          }`}
+          style={{
+            transitionDelay: `${delay + index * 40}ms`,
+            backfaceVisibility: "hidden", // Performance optimization
+          }}
+        >
+          {word}
+          {index < words.length - 1 && "\u00A0"}
+        </span>
+      ))}
     </div>
   );
 }
@@ -352,37 +421,6 @@ function LiveMetric({
       >
         {label}
       </div>
-    </div>
-  );
-}
-
-// Animated Text Component
-function AnimatedText({
-  text,
-  delay = 0,
-  className = "",
-}: {
-  text: string;
-  delay?: number;
-  className?: string;
-}) {
-  const [ref, isVisible] = useScrollAnimation(0);
-  const words = text.split(" ");
-
-  return (
-    <div ref={ref} className={className}>
-      {words.map((word, index) => (
-        <span
-          key={index}
-          className={`inline-block transition-all duration-500 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
-          style={{ transitionDelay: `${delay + index * 50}ms` }}
-        >
-          {word}
-          {index < words.length - 1 && "\u00A0"}
-        </span>
-      ))}
     </div>
   );
 }
@@ -653,6 +691,7 @@ function PortfolioChart() {
 // Carousel Hero Component
 function CarouselHero({ user }: { user: any }) {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const slides = [
     {
@@ -688,11 +727,19 @@ function CarouselHero({ user }: { user: any }) {
     setCurrentSlide((prev) => (prev - 1 + totalSlides) % totalSlides);
   };
 
-  // Auto-advance slides
+  // Initialize animations
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Auto-advance slides with pause on hover
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % totalSlides);
-    }, 5000); // Change slide every 5 seconds
+    }, 6000); // Change slide every 6 seconds
 
     return () => clearInterval(interval);
   }, [totalSlides]);
@@ -750,27 +797,78 @@ function CarouselHero({ user }: { user: any }) {
       <div className="relative z-10 container mx-auto px-4 pt-32 pb-20">
         <div className="max-w-6xl mx-auto text-center">
           {/* Announcement Badge */}
-          <div className="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm text-blue-200 rounded-full text-sm font-medium mb-8 border border-white/20">
-            <Sparkles className="w-4 h-4 mr-2" />
+          <div
+            className={`inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm text-blue-200 rounded-full text-sm font-medium mb-8 border border-white/20 transition-all duration-1000 ease-out ${
+              isLoaded
+                ? "opacity-100 translate-y-0 scale-100"
+                : "opacity-0 translate-y-4 scale-95"
+            }`}
+          >
+            <Sparkles className="w-4 h-4 mr-2 animate-pulse" />
             Introducing: Aggregated Blockchains
             <ArrowRight className="w-4 h-4 ml-2" />
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-6xl lg:text-7xl font-bold text-white mb-8 leading-tight">
-            RWA, Aggregated.
-          </h1>
+          <AnimatedText
+            text="RWA, Aggregated."
+            className={`text-6xl lg:text-7xl font-bold text-white mb-8 leading-tight transition-all duration-1200 ease-out ${
+              isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+            }`}
+            delay={200}
+          />
 
           {/* Subtitle */}
-          <p className="text-xl lg:text-2xl text-gray-300 mb-16 max-w-4xl mx-auto leading-relaxed">
+          <p
+            className={`text-xl lg:text-2xl text-gray-300 mb-16 max-w-4xl mx-auto leading-relaxed transition-all duration-1000 ease-out ${
+              isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+            }`}
+            style={{ transitionDelay: "600ms" }}
+          >
             Enabling an infinitely scalable ecosystem of real-world assets that
             feels like a single marketplace. Powered by AI-driven tokenization.
           </p>
 
+          {/* Central Dashboard Button */}
+          <div
+            className={`mb-12 transition-all duration-1000 ease-out ${
+              isLoaded
+                ? "opacity-100 translate-y-0 scale-100"
+                : "opacity-0 translate-y-8 scale-95"
+            }`}
+            style={{ transitionDelay: "800ms" }}
+          >
+            <Link
+              href={user ? "/dashboard" : "/sign-up"}
+              className="group relative inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-bold text-lg rounded-2xl hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 transition-all duration-300 hover:scale-105 hover:shadow-2xl shadow-lg border border-blue-400/30 backdrop-blur-sm overflow-hidden"
+            >
+              {/* Animated background glow */}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 via-indigo-400/20 to-purple-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
+
+              <div className="relative flex items-center">
+                <BarChart3 className="w-6 h-6 mr-3 group-hover:rotate-12 transition-transform duration-300 drop-shadow-sm" />
+                {user ? "Go to Dashboard" : "Start Tokenizing Assets"}
+                <ArrowRight className="w-6 h-6 ml-3 group-hover:translate-x-1 transition-transform duration-300 drop-shadow-sm" />
+              </div>
+            </Link>
+            {user && (
+              <p className="text-gray-300 mt-3 text-sm animate-pulse">
+                Welcome back! Access your portfolio and manage your assets.
+              </p>
+            )}
+          </div>
+
           {/* Three Main Action Cards */}
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {/* Tokenize Card */}
-            <div className="group bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all duration-300 hover:bg-white/10">
+            <div
+              className={`group bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all duration-500 hover:bg-white/10 hover:scale-105 hover:shadow-xl ${
+                isLoaded
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-8"
+              }`}
+              style={{ transitionDelay: "1000ms" }}
+            >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-white">Tokenize</h3>
                 <ArrowRight className="w-6 h-6 text-gray-400 group-hover:text-white group-hover:translate-x-1 transition-all duration-300" />
@@ -791,7 +889,14 @@ function CarouselHero({ user }: { user: any }) {
             </div>
 
             {/* Lend Card */}
-            <div className="group bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all duration-300 hover:bg-white/10">
+            <div
+              className={`group bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all duration-500 hover:bg-white/10 hover:scale-105 hover:shadow-xl ${
+                isLoaded
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-8"
+              }`}
+              style={{ transitionDelay: "1200ms" }}
+            >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-white">Lend</h3>
                 <ArrowRight className="w-6 h-6 text-gray-400 group-hover:text-white group-hover:translate-x-1 transition-all duration-300" />
@@ -812,7 +917,14 @@ function CarouselHero({ user }: { user: any }) {
             </div>
 
             {/* Trade Card */}
-            <div className="group bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all duration-300 hover:bg-white/10">
+            <div
+              className={`group bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all duration-500 hover:bg-white/10 hover:scale-105 hover:shadow-xl ${
+                isLoaded
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-8"
+              }`}
+              style={{ transitionDelay: "1400ms" }}
+            >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-white">Trade</h3>
                 <ArrowRight className="w-6 h-6 text-gray-400 group-hover:text-white group-hover:translate-x-1 transition-all duration-300" />
