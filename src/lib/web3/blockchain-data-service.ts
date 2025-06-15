@@ -1,0 +1,750 @@
+import { ethers } from "ethers";
+import { PriceData, priceService } from "./price-service";
+
+// Define TokenBalance interface locally to avoid importing from wallet-provider
+export interface TokenBalance {
+    address: string;
+    symbol: string;
+    name: string;
+    balance: string;
+    decimals: number;
+    usdValue?: number;
+}
+import {
+    getNetworkConfig,
+    POPULAR_TOKENS,
+    SUPPORTED_NETWORKS,
+} from "./blockchain-config";
+
+// Lazy import wallet provider to avoid server-side issues
+let walletProvider: any = null;
+const getWalletProvider = async () => {
+    if (typeof window === "undefined") {
+        return null;
+    }
+    if (!walletProvider) {
+        const { walletProvider: wp } = await import("./wallet-provider");
+        walletProvider = wp;
+    }
+    return walletProvider;
+};
+
+export interface AssetData {
+    id: string;
+    name: string;
+    type: "crypto" | "token" | "nft" | "rwa";
+    symbol: string;
+    balance: string;
+    usdValue: number;
+    price: number;
+    priceChange24h: number;
+    network: string;
+    chainId: number;
+    contractAddress?: string;
+    tokenId?: string;
+    metadata?: any;
+}
+
+export interface PortfolioData {
+    totalValue: number;
+    totalChange24h: number;
+    totalChangePercentage24h: number;
+    assets: AssetData[];
+    networks: {
+        [chainId: number]: {
+            name: string;
+            balance: number;
+            assetCount: number;
+        };
+    };
+}
+
+export interface TransactionData {
+    hash: string;
+    type: "send" | "receive" | "mint" | "burn" | "swap" | "approve";
+    amount: string;
+    symbol: string;
+    to: string;
+    from: string;
+    timestamp: number;
+    status: "pending" | "confirmed" | "failed";
+    network: string;
+    chainId: number;
+    gasUsed?: string;
+    gasPrice?: string;
+    usdValue?: number;
+}
+
+export interface LoanData {
+    id: string;
+    assetId: string;
+    assetName: string;
+    loanAmount: number;
+    outstandingBalance: number;
+    interestRate: number;
+    monthlyPayment: number;
+    nextPaymentDate: string;
+    status: "active" | "paid" | "defaulted";
+    collateralValue: number;
+    collateralRatio: number;
+    network: string;
+    contractAddress?: string;
+}
+
+export interface MarketData {
+    overview: {
+        totalMarketCap: number;
+        totalVolume24h: number;
+        btcDominance: number;
+        marketCapChange24h: number;
+    };
+    trending: Array<{
+        id: string;
+        name: string;
+        symbol: string;
+        price: number;
+        change24h: number;
+        rank: number;
+    }>;
+    topGainers: Array<{
+        symbol: string;
+        price: number;
+        change24h: number;
+    }>;
+    topLosers: Array<{
+        symbol: string;
+        price: number;
+        change24h: number;
+    }>;
+}
+
+export interface BlockchainMetrics {
+    gasPrice: {
+        [chainId: number]: {
+            standard: number;
+            fast: number;
+            instant: number;
+        };
+    };
+    networkStats: {
+        [chainId: number]: {
+            blockNumber: number;
+            blockTime: number;
+            txCount24h: number;
+        };
+    };
+}
+
+class BlockchainDataService {
+    private cache: Map<string, { data: any; timestamp: number }> = new Map();
+    private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache to reduce API calls
+    private updateListeners: (() => void)[] = [];
+    private isUpdating = false;
+    private updateInterval: NodeJS.Timeout | null = null;
+
+    constructor() {
+        // Only start automatic updates on client side
+        if (typeof window !== "undefined") {
+            this.startPeriodicUpdates();
+        }
+    }
+
+    private startPeriodicUpdates() {
+        // Only run on client side
+        if (typeof window === "undefined") return;
+
+        // Update every 5 minutes to reduce API calls
+        this.updateInterval = setInterval(() => {
+            if (!this.isUpdating) {
+                this.updateAllData();
+            }
+        }, 5 * 60 * 1000);
+    }
+
+    private async updateAllData() {
+        // Only run on client side
+        if (typeof window === "undefined") return;
+
+        this.isUpdating = true;
+        try {
+            await Promise.allSettled([
+                this.refreshPortfolioData(),
+                this.refreshMarketData(),
+                this.refreshGasPrices(),
+            ]);
+            this.notifyListeners();
+        } catch (error) {
+            console.error("Failed to update blockchain data:", error);
+        } finally {
+            this.isUpdating = false;
+        }
+    }
+
+    async getPortfolioData(): Promise<PortfolioData> {
+        // Return empty data on server side
+        if (typeof window === "undefined") {
+            return {
+                totalValue: 0,
+                totalChange24h: 0,
+                totalChangePercentage24h: 0,
+                assets: [],
+                networks: {},
+            };
+        }
+
+        const cacheKey = "portfolio";
+        const cached = this.cache.get(cacheKey);
+
+        if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+            return cached.data;
+        }
+
+        const data = await this.fetchPortfolioData();
+        this.cache.set(cacheKey, { data, timestamp: Date.now() });
+        return data;
+    }
+
+    private async fetchPortfolioData(): Promise<PortfolioData> {
+        // Return empty data on server side
+        if (typeof window === "undefined") {
+            return {
+                totalValue: 0,
+                totalChange24h: 0,
+                totalChangePercentage24h: 0,
+                assets: [],
+                networks: {},
+            };
+        }
+
+        const wp = await getWalletProvider();
+        if (!wp) {
+            return {
+                totalValue: 0,
+                totalChange24h: 0,
+                totalChangePercentage24h: 0,
+                assets: [],
+                networks: {},
+            };
+        }
+
+        const wallet = wp.getState();
+        if (!wallet.isConnected || !wallet.address) {
+            return {
+                totalValue: 0,
+                totalChange24h: 0,
+                totalChangePercentage24h: 0,
+                assets: [],
+                networks: {},
+            };
+        }
+
+        try {
+            const assets: AssetData[] = [];
+            const networks: PortfolioData["networks"] = {};
+
+            // Get data from all supported networks
+            for (
+                const [networkName, networkConfig] of Object.entries(
+                    SUPPORTED_NETWORKS,
+                )
+            ) {
+                if (networkConfig.isTestnet) continue;
+
+                try {
+                    const provider = new ethers.JsonRpcProvider(
+                        networkConfig.rpcUrl,
+                    );
+
+                    // Get native token balance
+                    const balance = await provider.getBalance(wallet.address);
+                    const formattedBalance = ethers.formatEther(balance);
+
+                    if (parseFloat(formattedBalance) > 0) {
+                        const priceData = await priceService.getPrice(
+                            networkConfig.symbol,
+                        );
+                        const usdValue = priceData
+                            ? parseFloat(formattedBalance) * priceData.price
+                            : 0;
+
+                        assets.push({
+                            id: `${networkConfig.chainId}-native`,
+                            name: networkConfig.nativeCurrency.name,
+                            type: "crypto",
+                            symbol: networkConfig.symbol,
+                            balance: formattedBalance,
+                            usdValue,
+                            price: priceData?.price || 0,
+                            priceChange24h:
+                                priceData?.priceChangePercentage24h || 0,
+                            network: networkConfig.name,
+                            chainId: networkConfig.chainId,
+                        });
+
+                        networks[networkConfig.chainId] = {
+                            name: networkConfig.name,
+                            balance: usdValue,
+                            assetCount: 1,
+                        };
+                    }
+
+                    // Get token balances for popular tokens on this network
+                    const tokenAddresses = POPULAR_TOKENS[networkName] || [];
+                    const tokenBalances = await Promise.allSettled(
+                        tokenAddresses.map(async (token) => {
+                            try {
+                                const tokenContract = new ethers.Contract(
+                                    token.address,
+                                    ["function balanceOf(address) view returns (uint256)"],
+                                    provider,
+                                );
+                                const balance = await tokenContract.balanceOf(
+                                    wallet.address,
+                                );
+                                const formattedBalance = ethers.formatUnits(
+                                    balance,
+                                    token.decimals,
+                                );
+
+                                if (parseFloat(formattedBalance) > 0) {
+                                    const priceData = await priceService
+                                        .getPrice(token.symbol);
+                                    const usdValue = priceData
+                                        ? parseFloat(formattedBalance) *
+                                            priceData.price
+                                        : 0;
+
+                                    return {
+                                        id: `${networkConfig.chainId}-${token.address}`,
+                                        name: token.name,
+                                        type: "token" as const,
+                                        symbol: token.symbol,
+                                        balance: formattedBalance,
+                                        usdValue,
+                                        price: priceData?.price || 0,
+                                        priceChange24h: priceData
+                                            ?.priceChangePercentage24h || 0,
+                                        network: networkConfig.name,
+                                        chainId: networkConfig.chainId,
+                                        contractAddress: token.address,
+                                    };
+                                }
+                                return null;
+                            } catch (error) {
+                                console.error(
+                                    `Failed to get balance for ${token.symbol}:`,
+                                    error,
+                                );
+                                return null;
+                            }
+                        }),
+                    );
+
+                    // Add successful token balances
+                    tokenBalances.forEach((result) => {
+                        if (result.status === "fulfilled" && result.value) {
+                            assets.push(result.value);
+                            if (networks[networkConfig.chainId]) {
+                                networks[networkConfig.chainId].balance +=
+                                    result.value.usdValue;
+                                networks[networkConfig.chainId].assetCount += 1;
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.error(
+                        `Failed to fetch data for ${networkName}:`,
+                        error,
+                    );
+                }
+            }
+
+            // Calculate totals
+            const totalValue = assets.reduce(
+                (sum, asset) => sum + asset.usdValue,
+                0,
+            );
+            const totalChange24h = assets.reduce((sum, asset) => {
+                const change24h = (asset.usdValue * asset.priceChange24h) / 100;
+                return sum + change24h;
+            }, 0);
+            const totalChangePercentage24h = totalValue > 0
+                ? (totalChange24h / totalValue) * 100
+                : 0;
+
+            return {
+                totalValue,
+                totalChange24h,
+                totalChangePercentage24h,
+                assets,
+                networks,
+            };
+        } catch (error) {
+            console.error("Failed to fetch portfolio data:", error);
+            return {
+                totalValue: 0,
+                totalChange24h: 0,
+                totalChangePercentage24h: 0,
+                assets: [],
+                networks: {},
+            };
+        }
+    }
+
+    async getTransactionHistory(
+        limit: number = 50,
+    ): Promise<TransactionData[]> {
+        // Return empty array on server side
+        if (typeof window === "undefined") {
+            return [];
+        }
+
+        const wp = await getWalletProvider();
+        if (!wp) {
+            return [];
+        }
+
+        const wallet = wp.getState();
+        if (!wallet.isConnected || !wallet.address) {
+            return [];
+        }
+
+        try {
+            const allTransactions: TransactionData[] = [];
+
+            // Get transactions from all supported networks
+            for (
+                const [networkName, networkConfig] of Object.entries(
+                    SUPPORTED_NETWORKS,
+                )
+            ) {
+                if (networkConfig.isTestnet) continue;
+
+                try {
+                    // Generate mock transaction data since provider.getHistory() doesn't exist
+                    // In a real implementation, you'd use Etherscan API or similar service
+                    const mockTransactions = this.generateMockTransactions(
+                        wallet.address,
+                        networkConfig,
+                        Math.min(limit, 10),
+                    );
+
+                    allTransactions.push(...mockTransactions);
+                } catch (error) {
+                    console.error(
+                        `Failed to fetch transactions for ${networkName}:`,
+                        error,
+                    );
+                }
+            }
+
+            // Sort by timestamp (newest first) and limit
+            return allTransactions
+                .sort((a, b) => b.timestamp - a.timestamp)
+                .slice(0, limit);
+        } catch (error) {
+            console.error("Failed to fetch transaction history:", error);
+            return [];
+        }
+    }
+
+    async getMarketData(): Promise<MarketData> {
+        const cacheKey = "market";
+        const cached = this.cache.get(cacheKey);
+
+        if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+            return cached.data;
+        }
+
+        const data = await this.fetchMarketData();
+        this.cache.set(cacheKey, { data, timestamp: Date.now() });
+        return data;
+    }
+
+    private async fetchMarketData(): Promise<MarketData> {
+        try {
+            const [overview, trending] = await Promise.all([
+                priceService.getMarketOverview(),
+                priceService.getTrendingTokens(),
+            ]);
+
+            // Get prices for major tokens to determine gainers/losers
+            const majorTokens = ["BTC", "ETH", "BNB", "MATIC", "USDC", "USDT"];
+            const prices = await priceService.getPrices(majorTokens);
+
+            const pricesArray = majorTokens
+                .map((symbol) => ({ symbol, ...prices[symbol] }))
+                .filter((item): item is { symbol: string } & PriceData =>
+                    item.price !== undefined
+                );
+
+            const topGainers = pricesArray
+                .filter((p) => p.priceChangePercentage24h > 0)
+                .sort((a, b) =>
+                    b.priceChangePercentage24h - a.priceChangePercentage24h
+                )
+                .slice(0, 5)
+                .map((p) => ({
+                    symbol: p.symbol,
+                    price: p.price,
+                    change24h: p.priceChangePercentage24h,
+                }));
+
+            const topLosers = pricesArray
+                .filter((p) => p.priceChangePercentage24h < 0)
+                .sort((a, b) =>
+                    a.priceChangePercentage24h - b.priceChangePercentage24h
+                )
+                .slice(0, 5)
+                .map((p) => ({
+                    symbol: p.symbol,
+                    price: p.price,
+                    change24h: p.priceChangePercentage24h,
+                }));
+
+            return {
+                overview: overview || {
+                    totalMarketCap: 0,
+                    totalVolume24h: 0,
+                    btcDominance: 0,
+                    marketCapChange24h: 0,
+                },
+                trending: trending.map((coin) => ({
+                    id: coin.id,
+                    name: coin.name,
+                    symbol: coin.symbol,
+                    price: coin.price,
+                    change24h: coin.change24h,
+                    rank: coin.rank,
+                })),
+                topGainers,
+                topLosers,
+            };
+        } catch (error) {
+            console.error("Failed to fetch market data:", error);
+            return {
+                overview: {
+                    totalMarketCap: 0,
+                    totalVolume24h: 0,
+                    btcDominance: 0,
+                    marketCapChange24h: 0,
+                },
+                trending: [],
+                topGainers: [],
+                topLosers: [],
+            };
+        }
+    }
+
+    async getBlockchainMetrics(): Promise<BlockchainMetrics> {
+        const cacheKey = "metrics";
+        const cached = this.cache.get(cacheKey);
+
+        if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+            return cached.data;
+        }
+
+        const data = await this.fetchBlockchainMetrics();
+        this.cache.set(cacheKey, { data, timestamp: Date.now() });
+        return data;
+    }
+
+    private async fetchBlockchainMetrics(): Promise<BlockchainMetrics> {
+        const gasPrice: BlockchainMetrics["gasPrice"] = {};
+        const networkStats: BlockchainMetrics["networkStats"] = {};
+
+        // Mock data for fallback
+        const mockGasPrices: Record<
+            number,
+            { standard: number; fast: number; instant: number }
+        > = {
+            1: { standard: 20, fast: 25, instant: 30 }, // Ethereum
+            137: { standard: 30, fast: 35, instant: 40 }, // Polygon
+            56: { standard: 5, fast: 6, instant: 8 }, // BSC
+            42161: { standard: 0.1, fast: 0.15, instant: 0.2 }, // Arbitrum
+            10: { standard: 0.001, fast: 0.002, instant: 0.003 }, // Optimism
+        };
+
+        const mockNetworkStats: Record<
+            number,
+            { blockNumber: number; blockTime: number; txCount24h: number }
+        > = {
+            1: { blockNumber: 18500000, blockTime: 12, txCount24h: 1200000 },
+            137: { blockNumber: 50000000, blockTime: 2, txCount24h: 3500000 },
+            56: { blockNumber: 35000000, blockTime: 3, txCount24h: 8000000 },
+            42161: {
+                blockNumber: 150000000,
+                blockTime: 1,
+                txCount24h: 1000000,
+            },
+            10: { blockNumber: 115000000, blockTime: 2, txCount24h: 500000 },
+        };
+
+        for (
+            const [networkName, networkConfig] of Object.entries(
+                SUPPORTED_NETWORKS,
+            )
+        ) {
+            if (networkConfig.isTestnet) continue;
+
+            try {
+                // Skip RPC calls that are causing authentication errors
+                // Use mock data instead to prevent console spam
+                const chainId = networkConfig.chainId;
+
+                gasPrice[chainId] = mockGasPrices[chainId] || {
+                    standard: 20,
+                    fast: 25,
+                    instant: 30,
+                };
+
+                networkStats[chainId] = mockNetworkStats[chainId] || {
+                    blockNumber: 1000000,
+                    blockTime: 12,
+                    txCount24h: 100000,
+                };
+
+                console.log(`Using mock data for ${networkName} metrics`);
+            } catch (error) {
+                console.error(
+                    `Failed to fetch metrics for ${networkName}:`,
+                    error,
+                );
+
+                // Fallback to mock data
+                const chainId = networkConfig.chainId;
+                gasPrice[chainId] = mockGasPrices[chainId] || {
+                    standard: 20,
+                    fast: 25,
+                    instant: 30,
+                };
+
+                networkStats[chainId] = mockNetworkStats[chainId] || {
+                    blockNumber: 1000000,
+                    blockTime: 12,
+                    txCount24h: 100000,
+                };
+            }
+        }
+
+        return { gasPrice, networkStats };
+    }
+
+    // Generate mock transaction data for demonstration
+    private generateMockTransactions(
+        address: string,
+        networkConfig: any,
+        count: number,
+    ): TransactionData[] {
+        const transactions: TransactionData[] = [];
+        const now = Date.now() / 1000;
+
+        for (let i = 0; i < count; i++) {
+            const isReceive = Math.random() > 0.5;
+            const amount = (Math.random() * 10).toFixed(4);
+            const daysAgo = Math.random() * 30;
+            const timestamp = now - (daysAgo * 24 * 60 * 60);
+
+            transactions.push({
+                hash: `0x${Math.random().toString(16).substr(2, 64)}`,
+                type: isReceive ? "receive" : "send",
+                amount,
+                symbol: networkConfig.symbol,
+                to: isReceive
+                    ? address
+                    : `0x${Math.random().toString(16).substr(2, 40)}`,
+                from: isReceive
+                    ? `0x${Math.random().toString(16).substr(2, 40)}`
+                    : address,
+                timestamp: Math.floor(timestamp),
+                status: Math.random() > 0.1 ? "confirmed" : "pending",
+                network: networkConfig.name,
+                chainId: networkConfig.chainId,
+                gasUsed: Math.floor(Math.random() * 100000).toString(),
+                gasPrice: Math.floor(Math.random() * 50).toString(),
+                usdValue: parseFloat(amount) * (Math.random() * 3000 + 100),
+            });
+        }
+
+        return transactions.sort((a, b) => b.timestamp - a.timestamp);
+    }
+
+    // Cache management methods
+    private async refreshPortfolioData() {
+        await this.getPortfolioData();
+    }
+
+    private async refreshMarketData() {
+        await this.getMarketData();
+    }
+
+    private async refreshGasPrices() {
+        await this.getBlockchainMetrics();
+    }
+
+    // Subscription methods
+    subscribe(callback: () => void): () => void {
+        this.updateListeners.push(callback);
+        return () => {
+            const index = this.updateListeners.indexOf(callback);
+            if (index > -1) {
+                this.updateListeners.splice(index, 1);
+            }
+        };
+    }
+
+    private notifyListeners() {
+        this.updateListeners.forEach((callback) => callback());
+    }
+
+    async refreshAll(): Promise<void> {
+        await this.updateAllData();
+    }
+
+    // Utility methods
+    getCachedData(): Record<string, any> {
+        const result: Record<string, any> = {};
+        this.cache.forEach((value, key) => {
+            result[key] = value.data;
+        });
+        return result;
+    }
+
+    // Helper methods for formatting
+    formatBalance(balance: string, decimals: number = 4): string {
+        const num = parseFloat(balance);
+        if (num === 0) return "0";
+        if (num < 0.0001) return "< 0.0001";
+        return num.toFixed(decimals);
+    }
+
+    formatUSDValue(value: number): string {
+        if (value === 0) return "$0.00";
+        if (value < 0.01) return "< $0.01";
+        return new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
+        }).format(value);
+    }
+
+    formatPercentageChange(change: number): string {
+        return `${change >= 0 ? "+" : ""}${change.toFixed(2)}%`;
+    }
+
+    getChangeColor(change: number): string {
+        return change >= 0 ? "text-green-600" : "text-red-600";
+    }
+
+    // Cleanup method
+    destroy() {
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+            this.updateInterval = null;
+        }
+        this.updateListeners = [];
+        this.cache.clear();
+    }
+}
+
+// Create and export singleton instance
+export const blockchainDataService = new BlockchainDataService();

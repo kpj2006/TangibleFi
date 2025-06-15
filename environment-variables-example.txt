@@ -1,0 +1,242 @@
+# ========================================
+# TANGIBLEFI - COMPLETE ENVIRONMENT SETUP
+# ========================================
+# Copy this file to .env.local and fill in your actual values
+
+# ===========================================
+# 1. NEXT.JS CONFIGURATION
+# ===========================================
+NODE_ENV=development
+NEXT_PUBLIC_APP_ENV=development
+NEXT_PUBLIC_DEBUG_MODE=true
+
+# ===========================================
+# 2. SUPABASE CONFIGURATION (Database & Auth)
+# ===========================================
+# Get these from: https://supabase.com/dashboard
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# How to get Supabase keys:
+# 1. Go to https://supabase.com and create account
+# 2. Create new project
+# 3. Go to Settings > API
+# 4. Copy URL, anon key, and service_role key
+
+# =========================================
+# 3. BLOCKCHAIN RPC CONFIGURATION
+# =========================================
+# Get free RPCs from Alchemy, Infura, or use public ones
+
+# MAINNET RPCs (Production)
+NEXT_PUBLIC_ETHEREUM_RPC_URL=https://eth-mainnet.alchemyapi.io/v2/your-alchemy-key
+NEXT_PUBLIC_POLYGON_RPC_URL=https://polygon-mainnet.g.alchemy.com/v2/your-alchemy-key
+NEXT_PUBLIC_ARBITRUM_RPC_URL=https://arb-mainnet.g.alchemy.com/v2/your-alchemy-key
+NEXT_PUBLIC_OPTIMISM_RPC_URL=https://opt-mainnet.g.alchemy.com/v2/your-alchemy-key
+NEXT_PUBLIC_BSC_RPC_URL=https://bsc-dataseed1.binance.org
+
+# TESTNET RPCs (Development)
+NEXT_PUBLIC_SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-alchemy-key
+NEXT_PUBLIC_POLYGON_MUMBAI_RPC_URL=https://rpc-mumbai.maticvigil.com
+NEXT_PUBLIC_ARBITRUM_GOERLI_RPC_URL=https://goerli-rollup.arbitrum.io/rpc
+
+# How to get RPC URLs:
+# Alchemy: https://www.alchemy.com (Recommended)
+# Infura: https://infura.io
+# Or use free public RPCs (may have rate limits)
+
+# =========================================
+# 4. DEPLOYED SMART CONTRACTS (SEPOLIA)
+# =========================================
+# 🎉 Your deployed contracts on Sepolia testnet:
+
+# Main Diamond Contract (Primary)
+NEXT_PUBLIC_SEPOLIA_DIAMOND_ADDRESS=0x4e37Ae8AEECb70b548DfE370a3fE442ef83Eb20c
+
+# Core Contracts
+NEXT_PUBLIC_SEPOLIA_AUTH_USER_ADDRESS=0xF21BaC0864E865B34d94F6D117B81f5Ff00a522B
+NEXT_PUBLIC_SEPOLIA_DIAMOND_CUT_ADDRESS=0x91ca68e0152F39a79E49e1434937ae15e07db95E
+NEXT_PUBLIC_SEPOLIA_DIAMOND_LOUPE_ADDRESS=0x7c5BF88225a3a4feB15EAE2dFda5f3Ac490A9E2a
+NEXT_PUBLIC_SEPOLIA_OWNERSHIP_ADDRESS=0xaC243A5DB2bbCca1155fFB8c62c9069bc25bA611
+NEXT_PUBLIC_SEPOLIA_VIEW_FACET_ADDRESS=0x01eC96Bd4C9271063800f4D6CaB6f7AeDa57a1E4
+NEXT_PUBLIC_SEPOLIA_CROSSCHAIN_ADDRESS=0x6B8AeAD3c9f279ffC6b72bBB20703c597aB6fC2d
+NEXT_PUBLIC_SEPOLIA_AUTOMATION_LOAN_ADDRESS=0x9AE7E7F0d6E4767ad4602633f0806Adb5E0F49C7
+
+# Placeholder for Mainnet (Deploy later)
+NEXT_PUBLIC_ETHEREUM_DIAMOND_ADDRESS=
+NEXT_PUBLIC_ETHEREUM_AUTH_USER_ADDRESS=
+
+# Placeholder for Polygon (Deploy later)
+NEXT_PUBLIC_POLYGON_DIAMOND_ADDRESS=
+NEXT_PUBLIC_POLYGON_AUTH_USER_ADDRESS=
+
+# =========================================
+# 5. ADMIN CONFIGURATION
+# =========================================
+# 🔒 Your admin wallet (the one that deployed contracts)
+NEXT_PUBLIC_ADMIN_WALLET_ADDRESS=0x153aFB2e56211D082b4e96F41b8AC4DB0e6c8f4e
+ADMIN_PRIVATE_KEY=your-admin-private-key-keep-secret
+
+# =========================================
+# 6. IPFS CONFIGURATION (Decentralized Storage)
+# =========================================
+# Choose ONE provider:
+
+# Option A: Pinata (Recommended - Easy Setup)
+# Get from: https://pinata.cloud
+NEXT_PUBLIC_PINATA_API_KEY=your-pinata-api-key
+NEXT_PUBLIC_PINATA_SECRET_KEY=your-pinata-secret-key
+NEXT_PUBLIC_IPFS_GATEWAY=https://gateway.pinata.cloud/ipfs/
+
+# Option B: Infura IPFS
+# Get from: https://infura.io/product/ipfs
+NEXT_PUBLIC_INFURA_PROJECT_ID=your-infura-project-id
+NEXT_PUBLIC_INFURA_PROJECT_SECRET=your-infura-project-secret
+# NEXT_PUBLIC_IPFS_GATEWAY=https://ipfs.infura.io/ipfs/
+
+# How to setup Pinata (Recommended):
+# 1. Go to https://pinata.cloud
+# 2. Create free account (1GB free)
+# 3. Go to API Keys
+# 4. Create new key with all permissions
+# 5. Copy API key and secret
+
+# =========================================
+# 7. PRICE DATA APIs (Market Data)
+# =========================================
+
+# CoinGecko (Free tier available)
+# Get from: https://www.coingecko.com/en/api
+NEXT_PUBLIC_COINGECKO_API_KEY=CG-TbcjjtdGVaMrYYcgRGSyPDhB
+
+# CoinMarketCap (Backup)
+# Get from: https://pro.coinmarketcap.com/signup
+COINMARKETCAP_API_KEY=your-coinmarketcap-api-key
+
+# How to get CoinGecko API:
+# 1. Go to https://www.coingecko.com/en/api
+# 2. Sign up for free account
+# 3. For production, upgrade to Pro ($129/month)
+# 4. For testing, free tier works (limited requests)
+
+# =========================================
+# 8. BLOCKCHAIN DATA PROVIDERS
+# =========================================
+
+# Alchemy (Recommended - Comprehensive)
+# Get from: https://www.alchemy.com
+NEXT_PUBLIC_ALCHEMY_API_KEY=22P7mF7ZxzRZOSSlPzavTWLPdbrCVqZw
+
+# Etherscan API Keys (For transaction data)
+# Get from: https://etherscan.io/apis
+ETHERSCAN_API_KEY=your-etherscan-api-key
+POLYGONSCAN_API_KEY=your-polygonscan-api-key
+ARBISCAN_API_KEY=your-arbiscan-api-key
+
+# How to get Alchemy (Recommended):
+# 1. Go to https://www.alchemy.com
+# 2. Create free account
+# 3. Create new app
+# 4. Select your networks (Ethereum, Polygon, etc.)
+# 5. Copy API key from dashboard
+
+# =========================================
+# 9. WALLET CONNECTION
+# =========================================
+
+# WalletConnect (For broader wallet support)
+# Get from: https://cloud.walletconnect.com
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your-walletconnect-project-id
+
+# How to get WalletConnect:
+# 1. Go to https://cloud.walletconnect.com
+# 2. Sign up and create project
+# 3. Copy Project ID
+
+# =========================================
+# 10. ANALYTICS & MONITORING
+# =========================================
+
+# Vercel Analytics (If deploying on Vercel)
+NEXT_PUBLIC_VERCEL_ANALYTICS_ID=your-vercel-analytics-id
+
+# Sentry (Error Monitoring - Optional)
+# Get from: https://sentry.io
+SENTRY_DSN=your-sentry-dsn
+
+# =========================================
+# 11. DEVELOPMENT SETTINGS
+# =========================================
+
+# Enable testnets for development
+NEXT_PUBLIC_ENABLE_TESTNET=true
+NEXT_PUBLIC_ENABLE_CROSS_CHAIN=true
+NEXT_PUBLIC_ENABLE_LENDING=true
+NEXT_PUBLIC_ENABLE_STAKING=true
+
+# =========================================
+# 12. RATE LIMITING & SECURITY
+# =========================================
+RATE_LIMIT_MAX_REQUESTS=100
+RATE_LIMIT_WINDOW_MS=900000
+
+# Redis (Optional - for caching)
+# Get from: https://redis.com or run locally
+REDIS_URL=redis://localhost:6379
+
+# =========================================
+# 13. DATABASE (Optional - Custom DB)
+# =========================================
+# If using custom PostgreSQL instead of Supabase
+DATABASE_URL=postgresql://user:password@localhost:5432/tangiblefi
+
+# =========================================
+# 14. LOGGING & DEBUGGING
+# =========================================
+LOG_LEVEL=info
+NEXT_PUBLIC_ENABLE_LOGGING=true
+
+# =========================================
+# COMING SOON (Future Features)
+# =========================================
+
+# Email Service (for notifications) - Coming Soon
+NEXT_PUBLIC_SMTP_HOST=smtp.gmail.com
+NEXT_PUBLIC_SMTP_PORT=587
+NEXT_PUBLIC_SMTP_USER=your-email@gmail.com
+NEXT_PUBLIC_SMTP_PASS=your-app-password
+
+# Stripe (for payments) - Coming Soon
+# NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+# STRIPE_SECRET_KEY=sk_test_...
+# STRIPE_WEBHOOK_SECRET=whsec_...
+
+# =========================================
+# QUICK START PRIORITY (Minimum Required)
+# =========================================
+# For immediate deployment, you need AT MINIMUM:
+# 1. Create .env.local file
+# 2. Add basic settings (copy from below):
+
+# NEXT_PUBLIC_SEPOLIA_DIAMOND_ADDRESS=0x4e37Ae8AEECb70b548DfE370a3fE442ef83Eb20c
+# NEXT_PUBLIC_SEPOLIA_AUTH_USER_ADDRESS=0xF21BaC0864E865B34d94F6D117B81f5Ff00a522B
+# NEXT_PUBLIC_ADMIN_WALLET_ADDRESS=0x153aFB2e56211D082b4e96F41b8AC4DB0e6c8f4e
+# NEXT_PUBLIC_ALCHEMY_API_KEY=22P7mF7ZxzRZOSSlPzavTWLPdbrCVqZw
+# NEXT_PUBLIC_ENABLE_TESTNET=true
+# NODE_ENV=development
+
+# =========================================
+# PRODUCTION CHECKLIST
+# =========================================
+# Before going live:
+# □ Deploy contracts to mainnet
+# □ Get production RPC URLs
+# □ Setup monitoring (Sentry)
+# □ Configure rate limiting
+# □ Setup Redis for caching
+# □ Get production API keys
+# □ Setup SSL certificates
+# □ Configure CORS properly
+# □ Enable error reporting
+# □ Setup backup systems 
