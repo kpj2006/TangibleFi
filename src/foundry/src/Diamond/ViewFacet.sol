@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 import {DiamondStorage} from "./DiamondStorage.sol";
 
-contract viewFacet {
+contract ViewFacet {
     function getUserNFTDetail(
         address _user,
         uint256 _tokenId
@@ -23,28 +23,28 @@ contract viewFacet {
     }
 
     /////
-    function getLoanByAccountId(
-        // This function retrieves the loan data for a specific account token ID
-        uint256 accountTokenId
-    ) external view returns (DiamondStorage.LoanData memory) {
-        DiamondStorage.VaultState storage ds = DiamondStorage.getStorage();
-        uint256 generatedLoanId = ds.accountToLoans[accountTokenId];
-        if (generatedLoanId == 0) {
-            revert DiamondStorage.LoanDataNotFoundForLoanId(); // Or a more specific error
-        }
-        uint256 collateralTokenId = ds.loanIdToCollateralTokenId[
-            generatedLoanId
-        ];
-        if (collateralTokenId == 0) {
-            revert DiamondStorage.LoanDataNotFoundForLoanId(); // Or a more specific error
-        }
-        DiamondStorage.LoanData memory loan = ds.loans[collateralTokenId];
-        // Integrity check
-        if (loan.loanId != generatedLoanId || !loan.isActive) {
-            revert DiamondStorage.LoanIdMismatch(); // Or LoanNotActive / DataNotFound
-        }
-        return loan;
-    }
+    // function getLoanByAccountId(
+    //     // This function retrieves the loan data for a specific account token ID
+    //     uint256 accountTokenId
+    // ) external view returns (DiamondStorage.LoanData memory) {
+    //     DiamondStorage.VaultState storage ds = DiamondStorage.getStorage();
+    //     uint256 generatedLoanId = ds.accountToLoans[accountTokenId];
+    //     if (generatedLoanId == 0) {
+    //         revert DiamondStorage.LoanDataNotFoundForLoanId(); // Or a more specific error
+    //     }
+    //     uint256 collateralTokenId = ds.loanIdToCollateralTokenId[
+    //         generatedLoanId
+    //     ];
+    //     if (collateralTokenId == 0) {
+    //         revert DiamondStorage.LoanDataNotFoundForLoanId(); // Or a more specific error
+    //     }
+    //     DiamondStorage.LoanData memory loan = ds.loans[collateralTokenId];
+    //     // Integrity check
+    //     if (loan.loanId != generatedLoanId || !loan.isActive) {
+    //         revert DiamondStorage.LoanIdMismatch(); // Or LoanNotActive / DataNotFound
+    //     }
+    //     return loan;
+    // }
 
     function getUserLoans(
         address user
@@ -201,33 +201,58 @@ contract viewFacet {
     }
 
     function getOverdueLoanIds(
-        uint256 maxLoansToProcess
-    ) external view returns (uint256[] memory overdueLoanIds, uint256 count) {
+        uint256 maxLoans
+    ) public view returns (uint256[] memory, uint256) {
         DiamondStorage.VaultState storage ds = DiamondStorage.getStorage();
-        overdueLoanIds = new uint256[](maxLoansToProcess);
-        count = 0;
-        for (
-            uint256 i = 1;
-            i <= ds.currentLoanId && count < maxLoansToProcess;
-            i++
-        ) {
+        uint256[] memory overdueLoanIds = new uint256[](maxLoans);
+        uint256 count = 0;
+
+        for (uint256 i = 1; i <= ds.currentLoanId && count < maxLoans; i++) {
             uint256 collateralTokenId = ds.loanIdToCollateralTokenId[i];
-            if (collateralTokenId == 0) {
-                continue;
-            }
-            DiamondStorage.LoanData memory loan = ds.loans[collateralTokenId];
-            if (loan.isActive && loan.loanId == i) {
-                uint256 monthIndex = (block.timestamp - loan.startTime) /
-                    30 days;
-                if (
-                    monthIndex < loan.monthlyPayments.length &&
-                    !loan.monthlyPayments[monthIndex] &&
-                    block.timestamp > loan.lastPaymentTime + 30 days
-                ) {
-                    overdueLoanIds[count] = i;
-                    count++;
-                }
+            if (collateralTokenId == 0) continue;
+
+            DiamondStorage.LoanData storage loan = ds.loans[collateralTokenId];
+
+            if (!loan.isActive) continue;
+
+            // Calculate month index based on time since loan start
+            uint256 monthIndex = (block.timestamp - loan.startTime) / 30 days;
+
+            //  Check if this month's payment is due
+            if (
+                monthIndex < loan.monthlyPayments.length &&
+                !loan.monthlyPayments[monthIndex] &&
+                // Check if it's overdue (at least 1 day past the start of the payment period)
+                block.timestamp >
+                loan.startTime + (monthIndex * 30 days) + 1 days
+            ) {
+                overdueLoanIds[count] = loan.loanId;
+                count++;
             }
         }
+
+        return (overdueLoanIds, count);
+    }
+
+    function getLoanById(
+        uint256 loanId
+    ) public view returns (DiamondStorage.LoanData memory) {
+        DiamondStorage.VaultState storage ds = DiamondStorage.getStorage();
+        uint256 collateralTokenId = ds.loanIdToCollateralTokenId[loanId];
+
+        //   Check if this loanId exists in our map
+        if (ds.loans[collateralTokenId].loanId != loanId) {
+            revert DiamondStorage.LoanDataNotFoundForLoanId();
+        }
+
+        return ds.loans[collateralTokenId];
+    }
+
+    function getLoanByAccountId(
+        uint256 accountTokenId
+    ) external view returns (DiamondStorage.LoanData memory) {
+        DiamondStorage.VaultState storage ds = DiamondStorage.getStorage();
+        uint256 loanId = ds.accountToLoans[accountTokenId];
+        return getLoanById(loanId);
     }
 }

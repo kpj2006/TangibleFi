@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {DiamondStorage} from "./DiamondStorage.sol";
-import {viewFacet} from "./ViewFacet.sol";
+import {ViewFacet} from "./ViewFacet.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
@@ -24,7 +24,7 @@ contract AutomationLoan is
     event LoanActivated(uint256 indexed loanId);
     event EMIPaid(uint256 indexed loanId, uint256 amount);
 
-    // --- EXISTING EVENTS (UNCHANGED) ---
+    // --- EXISTING EVENTS UNCHANGED---
     event LoanCreated(
         uint256 indexed loanId,
         address indexed borrower,
@@ -33,6 +33,7 @@ contract AutomationLoan is
         uint256 amount,
         address tokenAddress
     );
+    event BufferUsed(uint256 indexed loanId, uint256 amount);
     event BufferDeducted(uint256 indexed loanId, uint256 amount);
     event BufferReturned(uint256 indexed loanId, uint256 amount);
     event LoanRepaid(
@@ -42,19 +43,21 @@ contract AutomationLoan is
     );
     event LoanLiquidated(uint256 indexed loanId, address indexed borrower);
 
-    viewFacet private vf;
-    IERC721 public immutable nftContract;
     IERC721 public immutable userAccountNFT;
 
+    address public immutable diamondAddress;
+
     // --- CONSTRUCTOR (UNCHANGED) ---
-    constructor(
-        address _nftContract,
-        address _userAccountNFT,
-        address _viewFacet
-    ) {
-        nftContract = IERC721(_nftContract);
-        userAccountNFT = IERC721(_userAccountNFT);
-        vf = viewFacet(_viewFacet);
+    constructor(address _diamondAddress) {
+        diamondAddress = _diamondAddress;
+    }
+
+    function _viewFacet() internal view returns (ViewFacet) {
+        return ViewFacet(diamondAddress);
+    }
+
+    function _nftContract() internal view returns (IERC721) {
+        return IERC721(diamondAddress);
     }
 
     // --- MODIFIED: `createLoan` now supports an optional cross-chain flow ---
@@ -65,25 +68,20 @@ contract AutomationLoan is
         uint256 duration,
         uint256 amount,
         address tokenAddress,
-        // --- NEW OPTIONAL PARAMETERS ---
-        // For same-chain flow (original behavior): pass 0 and address(0).
-        // For cross-chain flow: pass the CCIP chain selector and the user's address on that chain.
         uint64 sourceChainSelector,
         address sourceAddress
     ) external {
         DiamondStorage.VaultState storage ds = DiamondStorage.getStorage();
         address borrower = msg.sender;
-        vf.validateLoanCreationView(tokenId, duration);
+        _validateLoanCreationView(tokenId, duration);
 
         require(tokenAddress != address(0), "Invalid token address");
-        if (nftContract.ownerOf(tokenId) != borrower) {
+        if (!_isNFTOwner(tokenId, borrower)) {
             revert DiamondStorage.Unauthorized();
         }
 
-        (uint256 totalDebt, uint256 bufferAmount) = vf.calculateLoanTerms(
-            amount,
-            duration
-        );
+        (uint256 totalDebt, uint256 bufferAmount) = _viewFacet()
+            .calculateLoanTerms(amount, duration);
 
         // --- NEW: DUAL PATH LOGIC ---
         if (sourceChainSelector == 0) {
@@ -180,12 +178,14 @@ contract AutomationLoan is
         // This function should be protected by a modifier like `onlyDiamond` in production.
         DiamondStorage.VaultState storage ds = DiamondStorage.getStorage();
         uint256 collateralTokenId = ds.loanIdToCollateralTokenId[loanId];
-        require(collateralTokenId != 0, "Loan not found");
+        if (ds.loans[collateralTokenId].loanId != loanId) {
+            revert("Loan not found");
+        }
         DiamondStorage.LoanData storage loan = ds.loans[collateralTokenId];
 
         require(!loan.isActive, "Loan is already active");
         require(
-            amountReceived == ds.pendingBufferAmounts[loanId],
+            amountReceived >= ds.pendingBufferAmounts[loanId],
             "Incorrect buffer amount received"
         );
         require(
@@ -196,11 +196,19 @@ contract AutomationLoan is
         delete ds.pendingBufferAmounts[loanId]; // Clean up pending state
 
         // Interactions: Take NFT collateral and disburse loan principal to the borrower.
-        nftContract.transferFrom(
+        _nftContract().transferFrom(
             loan.borrower,
             address(this),
             collateralTokenId
         );
+
+        // Make sure the contract has enough balance before transferring
+        require(
+            IERC20(loan.tokenAddress).balanceOf(address(this)) >=
+                loan.loanAmount,
+            "Insufficient funds in lending pool"
+        );
+
         IERC20(loan.tokenAddress).transfer(loan.borrower, loan.loanAmount);
 
         // Effects: Update loan state to active.
@@ -235,7 +243,11 @@ contract AutomationLoan is
         // This function should be protected by a modifier like `onlyDiamond` in production.
         DiamondStorage.VaultState storage ds = DiamondStorage.getStorage();
         uint256 collateralTokenId = ds.loanIdToCollateralTokenId[loanId];
-        require(collateralTokenId != 0, "Loan not found");
+
+        if (ds.loans[collateralTokenId].loanId != loanId) {
+            revert("Loan not found");
+        }
+
         DiamondStorage.LoanData storage loan = ds.loans[collateralTokenId];
 
         require(loan.isActive, "Loan is not active");
@@ -277,8 +289,12 @@ contract AutomationLoan is
             _activateLoanWithBuffer(loanId, amountReceived, tokenReceived);
         } else if (pType == PaymentType.EMI) {
             _creditCrossChainEMI(loanId, amountReceived, tokenReceived);
+        } else if (pType == PaymentType.FullRepayment) {
+            // This is a new type for full repayment
+            _repayLoanFullCrossChain(loanId, amountReceived, tokenReceived);
         }
     }
+
     // --- NEW HELPER FUNCTION FOR THE CROSS-CHAIN FLOW ---
     function _createPendingLoan(
         uint256 tokenId,
@@ -293,7 +309,7 @@ contract AutomationLoan is
         DiamondStorage.VaultState storage ds
     ) internal returns (uint256) {
         uint256 loanId = ++ds.currentLoanId;
-        uint256 interestRate = vf.calculateInterestRate(duration);
+        uint256 interestRate = _viewFacet().calculateInterestRate(duration);
         bool[] memory monthlyPayments = new bool[](duration / 30 days);
 
         ds.loans[tokenId] = DiamondStorage.LoanData({
@@ -338,7 +354,7 @@ contract AutomationLoan is
         bool[] memory monthlyPayments = new bool[](duration / 30 days);
         address borrower = msg.sender;
         loanId = ++ds.currentLoanId;
-        uint256 interestRate = vf.calculateInterestRate(duration);
+        uint256 interestRate = _viewFacet().calculateInterestRate(duration);
 
         // Update the token address in the user account (This seems redundant if done in createLoan, but preserving original logic)
         ds.User[borrower][accountTokenId].tokenAddress = tokenAddress;
@@ -380,16 +396,20 @@ contract AutomationLoan is
         bool success = false;
         IERC20 token = IERC20(tokenAddress);
         address borrower = msg.sender;
-        try nftContract.transferFrom(borrower, address(this), tokenId) {
+        try _nftContract().transferFrom(borrower, address(this), tokenId) {
             try token.transferFrom(borrower, address(this), bufferAmount) {
                 try token.transfer(borrower, amount) {
                     success = true;
                 } catch {
                     token.transfer(borrower, bufferAmount);
-                    nftContract.transferFrom(address(this), borrower, tokenId);
+                    _nftContract().transferFrom(
+                        address(this),
+                        borrower,
+                        tokenId
+                    );
                 }
             } catch {
-                nftContract.transferFrom(address(this), borrower, tokenId);
+                _nftContract().transferFrom(address(this), borrower, tokenId);
             }
         } catch {}
 
@@ -474,9 +494,7 @@ contract AutomationLoan is
     function makeMonthlyPayment(uint256 loanId) external {
         DiamondStorage.VaultState storage ds = DiamondStorage.getStorage();
         uint256 collateralTokenId = ds.loanIdToCollateralTokenId[loanId];
-        if (collateralTokenId == 0) {
-            revert DiamondStorage.LoanDataNotFoundForLoanId();
-        }
+
         DiamondStorage.LoanData storage loan = ds.loans[collateralTokenId];
         if (!loan.isActive) {
             revert DiamondStorage.LoanNotActive();
@@ -507,7 +525,7 @@ contract AutomationLoan is
         returns (bool upkeepNeeded, bytes memory performData)
     {
         uint256 maxLoansToProcess = 50;
-        (uint256[] memory overdueLoanIds_perform, uint256 count) = vf
+        (uint256[] memory overdueLoanIds_perform, uint256 count) = _viewFacet()
             .getOverdueLoanIds(maxLoansToProcess);
         upkeepNeeded = count > 0;
         if (upkeepNeeded) {
@@ -537,9 +555,7 @@ contract AutomationLoan is
     function liquidateLoan(uint256 loanId) internal {
         DiamondStorage.VaultState storage ds = DiamondStorage.getStorage();
         uint256 collateralTokenId = ds.loanIdToCollateralTokenId[loanId];
-        if (collateralTokenId == 0) {
-            return;
-        }
+
         DiamondStorage.LoanData storage loan = ds.loans[collateralTokenId];
         if (!loan.isActive || loan.loanId != loanId) return;
         uint256 monthIndex = (block.timestamp - loan.startTime) / 30 days;
@@ -570,9 +586,7 @@ contract AutomationLoan is
     function repayLoanFull(uint256 loanId) external {
         DiamondStorage.VaultState storage ds = DiamondStorage.getStorage();
         uint256 collateralTokenId = ds.loanIdToCollateralTokenId[loanId];
-        if (collateralTokenId == 0) {
-            revert DiamondStorage.LoanDataNotFoundForLoanId();
-        }
+
         DiamondStorage.LoanData storage loan = ds.loans[collateralTokenId];
         IERC20 token = IERC20(loan.tokenAddress);
         if (!loan.isActive || loan.loanId != loanId) {
@@ -612,11 +626,186 @@ contract AutomationLoan is
         ds.totalBufferLocked -= loan.remainingBuffer;
         ds.totalTokenLocked[loan.tokenAddress] -= loan.loanAmount;
         ds.totalBufferLockedByToken[loan.tokenAddress] -= loan.remainingBuffer;
-        nftContract.transferFrom(
+        _nftContract().transferFrom(
             address(this),
             msg.sender,
             loan.userAccountTokenId
         );
         emit LoanRepaid(loanId, msg.sender, remainingDebtToPay);
+    }
+
+    ////////////////////////
+    //Helper Functions
+    function _validateLoanCreationView(
+        uint256 tokenId,
+        uint256 duration
+    ) internal view {
+        DiamondStorage.VaultState storage ds = DiamondStorage.getStorage();
+
+        // Validate duration
+        if (
+            duration < DiamondStorage.MIN_LOAN_DURATION ||
+            duration > DiamondStorage.MAX_LOAN_DURATION
+        ) {
+            revert DiamondStorage.InvalidLoanDuration();
+        }
+
+        uint256 numberOfPaymentPeriods = duration / 30 days;
+
+        if (numberOfPaymentPeriods == 0) {
+            revert DiamondStorage.InvalidLoanDuration();
+        }
+
+        // Check loan existence
+        if (ds.loans[tokenId].isActive) {
+            revert DiamondStorage.LoanAlreadyExists();
+        }
+    }
+
+    // Helper to check NFT ownership through diamond
+    function _isNFTOwner(
+        uint256 tokenId,
+        address owner
+    ) internal view returns (bool) {
+        DiamondStorage.VaultState storage ds = DiamondStorage.getStorage();
+        return
+            ds.User[owner][tokenId].isAuth &&
+            ds.User[owner][tokenId].amount > 0;
+    }
+
+    /// just for testing purposes
+    // Add this function to your AutomationLoan contract
+    function testBufferPayment(
+        uint256 loanId,
+        uint256 monthIndex,
+        uint256 paymentAmount
+    ) external {
+        DiamondStorage.VaultState storage ds = DiamondStorage.getStorage();
+        uint256 collateralTokenId = ds.loanIdToCollateralTokenId[loanId];
+        DiamondStorage.LoanData storage loan = ds.loans[collateralTokenId];
+
+        // Standard checks
+        require(loan.isActive, "Loan not active");
+        require(
+            monthIndex < loan.monthlyPayments.length,
+            "Invalid month index"
+        );
+        require(!loan.monthlyPayments[monthIndex], "Payment already made");
+        require(
+            paymentAmount <= loan.remainingBuffer,
+            "Payment exceeds buffer"
+        );
+
+        // Calculate monthly payment amount
+        uint256 monthlyAmount = loan.totalDebt / loan.monthlyPayments.length;
+
+        // Check if buffer payment fully covers the monthly amount
+        if (paymentAmount >= monthlyAmount) {
+            // If buffer covers the full payment, mark it as paid
+            loan.monthlyPayments[monthIndex] = true;
+            loan.lastPaymentTime = block.timestamp;
+
+            // Deduct from buffer
+            loan.remainingBuffer -= paymentAmount;
+
+            // Update global buffer tracking
+            ds.totalBufferLocked -= paymentAmount;
+            ds.totalBufferLockedByToken[loan.tokenAddress] -= paymentAmount;
+
+            // Emit events
+            emit BufferUsed(loanId, paymentAmount);
+            emit EMIPaid(loanId, paymentAmount);
+        } else {
+            // If buffer doesn't cover full payment, use what's available
+            // but don't mark payment as complete - instead, liquidate
+            uint256 bufferToUse = loan.remainingBuffer; // Use all remaining buffer
+
+            // Reset buffer to zero
+            loan.remainingBuffer = 0;
+
+            // Update global buffer tracking
+            ds.totalBufferLocked -= bufferToUse;
+            ds.totalBufferLockedByToken[loan.tokenAddress] -= bufferToUse;
+
+            // Emit event for the buffer usage
+            emit BufferUsed(loanId, bufferToUse);
+
+            // Liquidate the loan
+            loan.isActive = false;
+            delete ds.loanIdToCollateralTokenId[loanId];
+            if (ds.totalActiveLoans > 0) ds.totalActiveLoans--;
+            ds.totalERC20Locked -= loan.loanAmount;
+
+            emit LoanLiquidated(loanId, loan.borrower);
+        }
+    }
+
+    // NEW: Function to handle full repayment in cross-chain context
+
+    function _repayLoanFullCrossChain(
+        uint256 loanId,
+        uint256 amountReceived,
+        address tokenReceived
+    ) internal {
+        DiamondStorage.VaultState storage ds = DiamondStorage.getStorage();
+        uint256 collateralTokenId = ds.loanIdToCollateralTokenId[loanId];
+
+        DiamondStorage.LoanData storage loan = ds.loans[collateralTokenId];
+
+        // 1. Initial validation
+        require(
+            loan.isActive && loan.loanId == loanId,
+            "Loan not active or found"
+        );
+        require(
+            tokenReceived == loan.tokenAddress,
+            "Incorrect token for repayment"
+        );
+
+        // 2. Calculate remaining debt (reusing logic from repayLoanFull)
+        uint256 paidAmountSoFar = 0;
+        uint256 monthlyInstallment = loan.totalDebt /
+            loan.monthlyPayments.length;
+        uint256 paidInstallmentsCount = 0;
+        for (uint i = 0; i < loan.monthlyPayments.length; ++i) {
+            if (loan.monthlyPayments[i]) {
+                paidInstallmentsCount++;
+            }
+        }
+        paidAmountSoFar = paidInstallmentsCount * monthlyInstallment;
+        uint256 remainingDebtToPay = loan.totalDebt > paidAmountSoFar
+            ? loan.totalDebt - paidAmountSoFar
+            : 0;
+
+        // Validate that the received amount is sufficient
+        require(
+            amountReceived >= remainingDebtToPay,
+            "Insufficient repayment amount"
+        );
+
+        // 3. Mark loan as inactive and update state
+        loan.isActive = false;
+        if (ds.totalActiveLoans > 0) ds.totalActiveLoans--;
+        ds.totalERC20Locked -= loan.loanAmount;
+        ds.totalBufferLocked -= loan.remainingBuffer;
+        ds.totalTokenLocked[loan.tokenAddress] -= loan.loanAmount;
+        ds.totalBufferLockedByToken[loan.tokenAddress] -= loan.remainingBuffer;
+
+        // 4. Refund remaining buffer to the borrower on this chain
+        if (loan.remainingBuffer > 0) {
+            IERC20 token = IERC20(loan.tokenAddress);
+            token.transfer(loan.borrower, loan.remainingBuffer);
+            emit BufferReturned(loanId, loan.remainingBuffer);
+        }
+
+        // 5. Transfer collateral NFT back to the borrower
+        _nftContract().transferFrom(
+            address(this),
+            loan.borrower,
+            loan.userAccountTokenId // Use userAccountTokenId as in repayLoanFull
+        );
+
+        // 6. Emit final event
+        emit LoanRepaid(loanId, loan.borrower, remainingDebtToPay);
     }
 }

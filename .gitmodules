@@ -1,0 +1,9 @@
+[submodule "src/foundry/lib/openzeppelin-contracts"]
+	path = src/foundry/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "src/foundry/lib/chainlink"]
+	path = src/foundry/lib/chainlink
+	url = https://github.com/smartcontractkit/chainlink
+[submodule "src/foundry/lib/forge-std"]
+	path = src/foundry/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std

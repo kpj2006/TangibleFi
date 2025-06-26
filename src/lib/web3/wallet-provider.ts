@@ -6,7 +6,7 @@ import {
     getNetworkConfig,
     SUPPORTED_NETWORKS,
 } from "./blockchain-config";
-
+import { createClient } from "../../../supabase/client";
 export interface WalletState {
     isConnected: boolean;
     address: string | null;
@@ -44,12 +44,52 @@ class WalletProvider {
 
     private listeners: ((state: WalletState) => void)[] = [];
     private ethereum: any = null;
-    private isInitialized = false;
+    private _isInitialized = false;
 
     constructor() {
         // Only initialize on client side
         if (typeof window !== "undefined") {
             this.initializeProvider();
+        }
+    }
+    private async _saveAddressToProfile(address: string) {
+        // This is a "fire and forget" operation from the wallet's perspective.
+        // We don't want to block the wallet connection flow if this fails.
+        // We just log errors to the console.
+        try {
+            const supabase = createClient();
+            // Get the currently logged-in user from Supabase Auth
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (user) {
+                // Check if a profile already exists
+                const { data: profile, error: fetchError } = await supabase
+                    .from('profiles')
+                    .select('wallet_address')
+                    .eq('id', user.id)
+                    .single();
+
+                if (fetchError && fetchError.code !== 'PGRST116') { // Ignore 'no rows' error
+                    throw fetchError;
+                }
+
+                // Only update if the address is different or not set
+                if (!profile || profile.wallet_address !== address) {
+                    const { error: updateError } = await supabase
+                        .from('profiles')
+                        .update({
+                            wallet_address: address,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', user.id);
+
+                    if (updateError) throw updateError;
+
+                    console.log("Wallet address saved to user profile successfully.");
+                }
+            }
+        } catch (error) {
+            console.error("Error saving wallet address to profile:", error);
         }
     }
 
@@ -68,7 +108,7 @@ class WalletProvider {
                 this.setupEventListeners();
                 await this.checkConnection();
             }
-            this.isInitialized = true;
+            this._isInitialized = true;
         } catch (error) {
             console.error("Failed to initialize wallet provider:", error);
         }
@@ -167,7 +207,7 @@ class WalletProvider {
 
             // Get balance
             await this.updateBalance();
-
+            this._saveAddressToProfile(accounts[0]);
             this.notifyListeners();
             return this.state;
         } catch (error: any) {
@@ -467,7 +507,7 @@ class WalletProvider {
     }
 
     isInitialized(): boolean {
-        return this.isInitialized;
+        return this._isInitialized;
     }
 }
 
@@ -481,8 +521,8 @@ export function useWallet() {
         return {
             ...walletProvider.getState(),
             connect: async () => walletProvider.getState(),
-            disconnect: async () => {},
-            switchNetwork: async () => {},
+            disconnect: async () => { },
+            switchNetwork: async () => { },
             isMetaMaskAvailable: false,
         };
     }

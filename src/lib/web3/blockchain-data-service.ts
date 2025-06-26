@@ -1,5 +1,7 @@
-import { ethers } from "ethers";
+import { ethers, Signer } from "ethers";
 import { PriceData, priceService } from "./price-service";
+import * as diamond from './diamond'; // <-- IMPORT OUR NEW DIAMOND SERVICE
+import { getFacetContract } from './diamond';
 import {
   getNetworkConfig,
   POPULAR_TOKENS,
@@ -246,7 +248,7 @@ class BlockchainDataService {
     }
 
     const wallet = wp.getState();
-    if (!wallet.isConnected || !wallet.address) {
+    if (!wallet.isConnected || !wallet.address || !wallet.provider) {
       return {
         totalValue: 0,
         totalChange24h: 0,
@@ -259,6 +261,21 @@ class BlockchainDataService {
     try {
       const assets: AssetData[] = [];
       const networks: PortfolioData["networks"] = {};
+
+      // ===== REAL ASSET FETCHING =====
+      if (wallet.chainId === 11155111) { // We are on Sepolia
+        console.log("Fetching RWA assets from Sepolia contract...");
+        const rwaAssets = await diamond.fetchUserAssetsFromContract(wallet.provider, wallet.address);
+        assets.push(...rwaAssets);
+
+        // Add to network summary
+        const totalRwaValue = rwaAssets.reduce((sum, asset) => sum + asset.usdValue, 0);
+        networks[11155111] = {
+          name: 'Sepolia',
+          balance: totalRwaValue,
+          assetCount: rwaAssets.length,
+        };
+      }
 
       // Get data from all supported networks
       for (const [networkName, networkConfig] of Object.entries(
@@ -721,75 +738,78 @@ class BlockchainDataService {
     return change >= 0 ? "text-green-600" : "text-red-600";
   }
 
-  // ===== LOAN MANAGEMENT METHODS =====
+  // =========================================================
+  // ===== LOAN MANAGEMENT METHODS (CORRECTED VERSION) =====
+  // =========================================================
 
+  /**
+   * Public method to get user loans, with caching.
+   * This is what your UI components should call.
+   */
   async getUserLoans(userAddress: string): Promise<LoanData[]> {
-    // Return empty array on server side
     if (typeof window === "undefined") {
-      return [];
+      return []; // No loans on the server side
     }
 
     const cacheKey = `loans-${userAddress}`;
     const cached = this.cache.get(cacheKey);
 
+    // Use cache if it's recent
     if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
       return cached.data;
     }
 
     try {
+      // This calls our private fetcher method
       const loans = await this.fetchUserLoans(userAddress);
+      // Store the result in the cache
       this.cache.set(cacheKey, { data: loans, timestamp: Date.now() });
       return loans;
     } catch (error) {
-      console.error("Failed to fetch user loans:", error);
+      console.error("Failed to get user loans:", error);
       return [];
     }
   }
 
+  /**
+   * Private method that performs the actual fetching logic.
+   * It decides whether to call the real contract or use mock data.
+   */
   private async fetchUserLoans(userAddress: string): Promise<LoanData[]> {
     const wp = await getWalletProvider();
     if (!wp) {
+      console.warn("Wallet provider not available, falling back to mock loans.");
       return this.generateMockLoans(userAddress);
     }
 
-    try {
-      // Import web3Service dynamically to avoid server-side issues
-      const { web3Service } = await import("./contracts");
-
-      const supportedNetworks = web3Service.getSupportedNetworks();
-      const allLoans: LoanData[] = [];
-
-      for (const network of supportedNetworks) {
-        try {
-          const loanIds = await web3Service.getUserLoans(userAddress, network);
-
-          for (const loanId of loanIds) {
-            // For now, we'll create mock data based on the loan IDs
-            // In a real implementation, you'd fetch full loan details from the smart contract
-            const mockLoan = this.createMockLoanFromId(
-              loanId,
-              network,
-              userAddress
-            );
-            allLoans.push(mockLoan);
-          }
-        } catch (error) {
-          console.error(`Failed to fetch loans for ${network}:`, error);
-        }
-      }
-
-      return allLoans;
-    } catch (error) {
-      console.error("Error fetching loans from smart contracts:", error);
+    const wallet = wp.getState();
+    if (!wallet.isConnected || !wallet.provider || wallet.address !== userAddress) {
+      console.warn("Wallet not connected or address mismatch, falling back to mock loans.");
       return this.generateMockLoans(userAddress);
     }
+
+    // --- REAL LOAN FETCHING LOGIC ---
+    if (wallet.chainId === 11155111) { // Check if we are on Sepolia
+      console.log("Fetching loans from Sepolia smart contract...");
+      // This correctly calls your new `diamond.ts` service
+      return diamond.fetchUserLoansFromContract(wallet.provider, userAddress);
+    }
+
+    // Fallback for any other network (mainnet, polygon, etc.)
+    console.warn(`No loan contracts configured for chainId ${wallet.chainId}. Returning mock loans.`);
+    return this.generateMockLoans(userAddress);
   }
 
+  /**
+   * Private method to create a single mock loan from an ID.
+   * (This part is correct and can be kept)
+   */
   private createMockLoanFromId(
     loanId: number,
     network: string,
     userAddress: string
   ): LoanData {
+    // ... (Your existing code for this method is fine)
     const loanAmount = Math.random() * 50000 + 10000;
     const interestRate = 5 + Math.random() * 10;
     const monthlyPayment = loanAmount * (interestRate / 100 / 12);
@@ -828,7 +848,12 @@ class BlockchainDataService {
     };
   }
 
+  /**
+   * Private method to generate an array of mock loans.
+   * (This part is correct and can be kept)
+   */
   private generateMockLoans(userAddress: string): LoanData[] {
+    // ... (Your existing code for this method is fine)
     const loans: LoanData[] = [];
     const loanCount = Math.floor(Math.random() * 5) + 1;
 
@@ -879,52 +904,57 @@ class BlockchainDataService {
   async calculateLoanTerms(
     amount: number,
     durationMonths: number,
-    network?: string
   ): Promise<{
     totalDebt: number;
     bufferAmount: number;
     interestRate: number;
     monthlyPayment: number;
   }> {
-    try {
-      // Import web3Service dynamically
-      const { web3Service } = await import("./contracts");
+    const wp = await getWalletProvider();
+    const wallet = wp?.getState();
+    const durationInSeconds = durationMonths * 30 * 24 * 60 * 60; // Approximate seconds
 
-      const terms = await web3Service.calculateLoanTerms(
-        amount.toString(),
-        durationMonths * 30 * 24 * 60 * 60, // Convert months to seconds
-        network
-      );
+    // --- REAL CALCULATION LOGIC ---
+    // Check if connected to Sepolia and provider is available
+    if (wallet?.isConnected && wallet.provider && wallet.chainId === 11155111) {
+      try {
+        console.log("Calculating loan terms via Sepolia contract...");
+        const contractTerms = await diamond.calculateLoanTermsFromContract(
+          wallet.provider,
+          amount.toString(),
+          durationInSeconds
+        );
 
-      const totalDebt = parseFloat(terms.totalDebt);
-      const bufferAmount = parseFloat(terms.bufferAmount);
-      const interestRate = parseFloat(terms.interestRate);
-      const monthlyPayment = totalDebt / durationMonths;
+        const totalDebt = parseFloat(contractTerms.totalDebt);
 
-      return {
-        totalDebt,
-        bufferAmount,
-        interestRate,
-        monthlyPayment,
-      };
-    } catch (error) {
-      console.error("Error calculating loan terms:", error);
+        return {
+          totalDebt: totalDebt,
+          bufferAmount: parseFloat(contractTerms.bufferAmount),
+          interestRate: parseFloat(contractTerms.interestRate),
+          monthlyPayment: durationMonths > 0 ? totalDebt / durationMonths : 0,
+        };
 
-      // Fallback calculation
-      const interestRate = 5 + (durationMonths / 12) * 2; // 5% base + 2% per year
-      const totalInterest =
-        amount * (interestRate / 100) * (durationMonths / 12);
-      const totalDebt = amount + totalInterest;
-      const bufferAmount = totalDebt * 0.1; // 10% buffer
-      const monthlyPayment = totalDebt / durationMonths;
-
-      return {
-        totalDebt,
-        bufferAmount,
-        interestRate,
-        monthlyPayment,
-      };
+      } catch (error) {
+        console.error("Contract call for loan terms failed, using fallback calculation.", error);
+        // If the contract call fails for any reason, we fall through to the mock logic below
+      }
     }
+
+    // --- FALLBACK / MOCK CALCULATION ---
+    // This will run if not on Sepolia, or if the contract call above failed.
+    console.warn("Using fallback/mock loan term calculation.");
+    const interestRate = 5 + (durationMonths / 12) * 2; // 5% base + 2% per year
+    const totalInterest = amount * (interestRate / 100) * (durationMonths / 12);
+    const totalDebt = amount + totalInterest;
+    const bufferAmount = totalDebt * 0.1; // 10% buffer
+    const monthlyPayment = durationMonths > 0 ? totalDebt / durationMonths : 0;
+
+    return {
+      totalDebt,
+      bufferAmount,
+      interestRate,
+      monthlyPayment,
+    };
   }
 
   async getLoanAnalytics(userAddress: string): Promise<{
@@ -983,6 +1013,53 @@ class BlockchainDataService {
     this.cache.clear();
   }
 }
+
+// ... (keep all your existing functions)
+
+// ===========================================
+// --- WRITE/TRANSACTION FUNCTIONS (use Signer) ---
+// ===========================================
+
+/**
+ * Mints the authentication NFT for the connected user.
+ * @param signer - The user's wallet signer, required to send a transaction.
+ * @param tokenURI - The IPFS CID or metadata URL for the NFT.
+ * @param valuation - The initial appraised value of the asset (as a string, e.g., "1000").
+ * @returns The transaction hash.
+ */
+export const mintAuthNFT = async (
+  signer: Signer,
+  tokenURI: string,
+  valuation: string
+): Promise<string> => {
+  try {
+    const authUserFacet = await getFacetContract('AuthUser', signer);
+    const userAddress = await signer.getAddress();
+    
+    // Your AuthUser.sol has: function mintAuthNFT(address to, string memory tokenURI, uint256 valuation)
+    // Let's assume the contract mints the NFT *to* the message sender (the signer).
+    // So the 'to' parameter is handled by the contract. If it's explicit, you'd pass userAddress.
+    
+    const valuationWei = ethers.parseEther(valuation);
+
+    console.log(`Minting Auth NFT for ${userAddress} with URI: ${tokenURI}`);
+    const tx = await authUserFacet.mintAuthNFT(userAddress, tokenURI, valuationWei);
+
+    // Wait for the transaction to be mined (1 confirmation)
+    await tx.wait();
+
+    console.log("Minting transaction successful, hash:", tx.hash);
+    return tx.hash;
+
+  } catch (error: any) {
+    console.error("Error minting Auth NFT:", error);
+    // You can parse for common errors here, e.g., user rejected transaction
+    if (error.code === 'ACTION_REJECTED') {
+      throw new Error("Transaction was rejected by the user.");
+    }
+    throw new Error("An error occurred during the minting process.");
+  }
+};
 
 // Create and export singleton instance
 export const blockchainDataService = new BlockchainDataService();

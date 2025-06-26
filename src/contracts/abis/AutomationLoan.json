@@ -1,0 +1,484 @@
+[
+    {
+        "type": "constructor",
+        "inputs": [
+            {
+                "name": "_diamondAddress",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "_activateLoanWithBuffer",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "amountReceived",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "tokenReceived",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "_creditCrossChainEMI",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "amountReceived",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "tokenReceived",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "_handleCrossChainPayment",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "amountReceived",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "tokenReceived",
+                "type": "address",
+                "internalType": "address"
+            },
+            {
+                "name": "pType",
+                "type": "uint8",
+                "internalType": "enum PaymentType"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "checkUpkeep",
+        "inputs": [
+            {
+                "name": "",
+                "type": "bytes",
+                "internalType": "bytes"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "upkeepNeeded",
+                "type": "bool",
+                "internalType": "bool"
+            },
+            {
+                "name": "performData",
+                "type": "bytes",
+                "internalType": "bytes"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "createLoan",
+        "inputs": [
+            {
+                "name": "tokenId",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "accountTokenId",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "duration",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "tokenAddress",
+                "type": "address",
+                "internalType": "address"
+            },
+            {
+                "name": "sourceChainSelector",
+                "type": "uint64",
+                "internalType": "uint64"
+            },
+            {
+                "name": "sourceAddress",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "diamondAddress",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "makeMonthlyPayment",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "performUpkeep",
+        "inputs": [
+            {
+                "name": "performData",
+                "type": "bytes",
+                "internalType": "bytes"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "repayLoanFull",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "testBufferPayment",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "monthIndex",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "paymentAmount",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "userAccountNFT",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "address",
+                "internalType": "contract IERC721"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "event",
+        "name": "BufferDeducted",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            },
+            {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "BufferReturned",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            },
+            {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "BufferUsed",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            },
+            {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "EMIPaid",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            },
+            {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "LoanActivated",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "LoanCreated",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            },
+            {
+                "name": "borrower",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "tokenId",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            },
+            {
+                "name": "accountTokenId",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            },
+            {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            },
+            {
+                "name": "tokenAddress",
+                "type": "address",
+                "indexed": false,
+                "internalType": "address"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "LoanLiquidated",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            },
+            {
+                "name": "borrower",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "LoanRepaid",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            },
+            {
+                "name": "borrower",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "LoanRequested",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            },
+            {
+                "name": "borrower",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "bufferAmount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            },
+            {
+                "name": "sourceChainSelector",
+                "type": "uint64",
+                "indexed": false,
+                "internalType": "uint64"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "error",
+        "name": "InsufficientCollateral",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "InvalidLoanDuration",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "LoanAlreadyExists",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "LoanNotActive",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "PaymentNotDue",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "TransferFailed",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Unauthorized",
+        "inputs": []
+    }
+]

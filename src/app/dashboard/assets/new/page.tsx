@@ -42,22 +42,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { web3Service } from "@/lib/web3/contracts";
 import { ipfsService } from "@/lib/ipfs/service";
 
 export default function NewAssetPage() {
   const router = useRouter();
   const supabase = createClient();
 
+
   // State management
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
-  const [txHash, setTxHash] = useState<string | null>(null);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -69,18 +67,7 @@ export default function NewAssetPage() {
     blockchain: "ethereum",
   });
 
-  // Connect wallet on component mount
-  useEffect(() => {
-    const connectWallet = async () => {
-      try {
-        const address = await web3Service.connect();
-        setWalletAddress(address);
-      } catch (error) {
-        console.error("Wallet connection error:", error);
-      }
-    };
-    connectWallet();
-  }, []);
+
 
   const handleFileUpload = (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -100,37 +87,29 @@ export default function NewAssetPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const createAsset = async () => {
-    if (!walletAddress) {
-      setError("Please connect your wallet first");
-      return;
-    }
+  // Replace your entire createAsset function with this one.
 
+  const createAsset = async () => {
     setIsLoading(true);
     setError(null);
-    setCurrentStep(1);
+    setCurrentStep(1); // For UI progress feedback
 
     try {
-      // Step 1: Upload documents to IPFS
+      // Step 1: Upload documents and image to IPFS (This logic is correct and stays)
       setCurrentStep(1);
       let documentHashes: string[] = [];
       let imageHash: string = "";
 
       if (selectedFiles.length > 0) {
-        const uploadResults =
-          await ipfsService.uploadAssetDocuments(selectedFiles);
+        const uploadResults = await ipfsService.uploadAssetDocuments(selectedFiles);
         documentHashes = uploadResults.map((result) => result.hash);
       }
-
       if (imageFile) {
-        const imageResult = await ipfsService.uploadFile(imageFile, {
-          name: `${formData.name}_image`,
-          description: "Asset image",
-        });
+        const imageResult = await ipfsService.uploadFile(imageFile, { name: `${formData.name}_image`, description: "Asset image" });
         imageHash = imageResult.hash;
       }
 
-      // Step 2: Create metadata
+      // Step 2: Create the metadata JSON file and upload it (This logic is correct and stays)
       setCurrentStep(2);
       const metadataResult = await ipfsService.createAssetMetadata({
         name: formData.name,
@@ -143,72 +122,44 @@ export default function NewAssetPage() {
         documentHashes,
       });
 
-      // Step 3: Mint NFT on blockchain
-      setCurrentStep(3);
-      const mintResult = await web3Service.mintAssetNFT(
-        walletAddress,
-        metadataResult.url,
-        formData.original_value,
-        formData.blockchain
-      );
+      // Step 3: Save the request to your database for admin review
+      setCurrentStep(3); // You can update the UI text to "Submitting for review..."
+      const { data: { user } } = await supabase.auth.getUser();
 
-      setTxHash(mintResult.txHash);
-
-      // Step 4: Save to database
-      setCurrentStep(4);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (user) {
-        const { error: dbError } = await supabase.from("assets").insert({
-          user_id: user.id,
-          name: formData.name,
-          asset_type: formData.asset_type,
-          description: formData.description,
-          location: formData.location,
-          original_value: parseFloat(formData.original_value),
-          current_value: parseFloat(formData.original_value),
-          blockchain: formData.blockchain,
-          verification_status: "pending",
-          collateralization_status: "available",
-          token_address: web3Service.getContractAddress(formData.blockchain),
-          documents: JSON.stringify({
-            token_id: mintResult.tokenId,
-            metadata_uri: metadataResult.url,
-            ipfs_hash: metadataResult.hash,
-            transaction_hash: mintResult.txHash,
-            uploaded_files: selectedFiles.map((f) => f.name),
-          }),
-        });
-
-        if (dbError) {
-          console.error("Database error details:", {
-            message: dbError.message,
-            details: dbError.details,
-            hint: dbError.hint,
-            code: dbError.code,
-          });
-          // Don't fail the entire process for database errors, but log the details
-          setError(
-            `Database save failed: ${dbError.message || "Unknown error"}`
-          );
-        } else {
-          console.log("Asset successfully saved to database");
-        }
+      if (!user) {
+        throw new Error("You must be logged in to submit an asset.");
       }
 
-      setSuccess(
-        `Asset successfully tokenized! Token ID: ${mintResult.tokenId}`
-      );
+      const { error: dbError } = await supabase.from("assets").insert({
+        user_id: user.id,
+        name: formData.name,
+        asset_type: formData.asset_type,
+        description: formData.description,
+        location: formData.location,
+        original_value: parseFloat(formData.original_value),
+        current_value: parseFloat(formData.original_value),
+        blockchain: formData.blockchain,
+        verification_status: "pending", // <-- THE MOST IMPORTANT CHANGE
+        documents: { // Storing as JSONB is better
+          metadata_uri: metadataResult.url,
+          ipfs_hash: metadataResult.hash,
+        },
+      });
 
-      // Redirect after success
+      if (dbError) {
+        throw dbError; // Let the catch block handle the error display
+      }
+
+      setSuccess("Your asset has been successfully submitted for review. You will be notified upon approval.");
+
+      // Redirect the user back to their assets dashboard
       setTimeout(() => {
         router.push("/dashboard/assets");
       }, 3000);
+
     } catch (error: any) {
-      console.error("Asset creation error:", error);
-      setError(error.message || "Failed to create asset");
+      console.error("Asset submission error:", error);
+      setError(error.message || "Failed to submit asset for review.");
     } finally {
       setIsLoading(false);
     }
@@ -252,7 +203,7 @@ export default function NewAssetPage() {
           </div>
 
           {/* Status Messages */}
-          {error && (
+          {error && ( // Use the local error state
             <Alert className="mb-6 border-red-200 bg-red-50">
               <AlertTriangle className="h-4 w-4 text-red-600" />
               <AlertDescription className="text-red-700">
@@ -261,29 +212,18 @@ export default function NewAssetPage() {
             </Alert>
           )}
 
-          {success && (
+          {success && ( // The success message is now simpler
             <Alert className="mb-6 border-green-200 bg-green-50">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-700">
                 {success}
-                {txHash && (
-                  <div className="mt-2">
-                    <a
-                      href={web3Service.getBlockExplorerUrl(txHash)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800"
-                    >
-                      View Transaction <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                )}
               </AlertDescription>
             </Alert>
           )}
 
           {/* Progress Indicator */}
-          {isLoading && (
+
+          {isLoading && ( // Use the local isLoading state
             <Card className="mb-6 border-blue-200 bg-blue-50">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
@@ -292,11 +232,10 @@ export default function NewAssetPage() {
                     <p className="font-medium text-blue-900">
                       {currentStep === 1 && "Uploading documents to IPFS..."}
                       {currentStep === 2 && "Creating metadata..."}
-                      {currentStep === 3 && "Minting NFT on blockchain..."}
-                      {currentStep === 4 && "Saving to database..."}
+                      {currentStep === 3 && "Submitting for admin review..."} {/* <-- Updated text */}
                     </p>
                     <p className="text-sm text-blue-700">
-                      Step {currentStep} of 4
+                      Step {currentStep} of 3 {/* <-- Updated step count */}
                     </p>
                   </div>
                 </div>
@@ -628,52 +567,25 @@ export default function NewAssetPage() {
                       </div>
                     </div>
 
-                    {/* Wallet Connection Status */}
-                    <div className="border-t border-gray-200 pt-6">
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Shield className="h-5 w-5 text-blue-600" />
-                          <span className="font-medium text-gray-900">
-                            Wallet Status
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {walletAddress ? (
-                            <>
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                              <span className="text-sm text-green-700">
-                                {walletAddress.slice(0, 6)}...
-                                {walletAddress.slice(-4)}
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <AlertTriangle className="h-4 w-4 text-orange-600" />
-                              <span className="text-sm text-orange-700">
-                                Not Connected
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+
 
                     {/* Submit Button */}
                     <div className="border-t border-gray-200 pt-8">
+
                       <Button
                         onClick={createAsset}
-                        disabled={isLoading || !walletAddress}
+                        disabled={isLoading} // The disabled state only depends on the local isLoading
                         className="w-full h-14 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-200 rounded-xl disabled:opacity-50"
                       >
                         {isLoading ? (
                           <>
                             <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                            Creating Your Asset NFT...
+                            Submitting...
                           </>
                         ) : (
                           <>
                             <Sparkles className="h-5 w-5 mr-2" />
-                            Tokenize Asset & Create NFT
+                            Submit for Verification
                           </>
                         )}
                       </Button>

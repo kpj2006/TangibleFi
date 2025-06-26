@@ -1,0 +1,497 @@
+[
+    {
+        "type": "function",
+        "name": "calculateInterestRate",
+        "inputs": [
+            {
+                "name": "duration",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "stateMutability": "pure"
+    },
+    {
+        "type": "function",
+        "name": "calculateLoanTerms",
+        "inputs": [
+            {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "duration",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "totalDebt",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "bufferAmount",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "stateMutability": "pure"
+    },
+    {
+        "type": "function",
+        "name": "calculateTotalCurrentDebt",
+        "inputs": [
+            {
+                "name": "generatedLoanId",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "calculateTotalDebt",
+        "inputs": [
+            {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "rate",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "duration",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "stateMutability": "pure"
+    },
+    {
+        "type": "function",
+        "name": "calculateTotalInterest",
+        "inputs": [
+            {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "rate",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "duration",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "stateMutability": "pure"
+    },
+    {
+        "type": "function",
+        "name": "getLoanByAccountId",
+        "inputs": [
+            {
+                "name": "accountTokenId",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "tuple",
+                "internalType": "struct DiamondStorage.LoanData",
+                "components": [
+                    {
+                        "name": "loanId",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "loanAmount",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "startTime",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "duration",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "interestRate",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "totalDebt",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "isActive",
+                        "type": "bool",
+                        "internalType": "bool"
+                    },
+                    {
+                        "name": "borrower",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "userAccountTokenId",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "bufferAmount",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "remainingBuffer",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "lastPaymentTime",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "monthlyPayments",
+                        "type": "bool[]",
+                        "internalType": "bool[]"
+                    },
+                    {
+                        "name": "tokenAddress",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "sourceChainSelector",
+                        "type": "uint64",
+                        "internalType": "uint64"
+                    },
+                    {
+                        "name": "sourceAddress",
+                        "type": "address",
+                        "internalType": "address"
+                    }
+                ]
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "getLoanById",
+        "inputs": [
+            {
+                "name": "loanId",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "tuple",
+                "internalType": "struct DiamondStorage.LoanData",
+                "components": [
+                    {
+                        "name": "loanId",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "loanAmount",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "startTime",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "duration",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "interestRate",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "totalDebt",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "isActive",
+                        "type": "bool",
+                        "internalType": "bool"
+                    },
+                    {
+                        "name": "borrower",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "userAccountTokenId",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "bufferAmount",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "remainingBuffer",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "lastPaymentTime",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "monthlyPayments",
+                        "type": "bool[]",
+                        "internalType": "bool[]"
+                    },
+                    {
+                        "name": "tokenAddress",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "sourceChainSelector",
+                        "type": "uint64",
+                        "internalType": "uint64"
+                    },
+                    {
+                        "name": "sourceAddress",
+                        "type": "address",
+                        "internalType": "address"
+                    }
+                ]
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "getOverdueLoanIds",
+        "inputs": [
+            {
+                "name": "maxLoans",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256[]",
+                "internalType": "uint256[]"
+            },
+            {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "getUserInvestments",
+        "inputs": [
+            {
+                "name": "_user",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "tokenIds",
+                "type": "uint256[]",
+                "internalType": "uint256[]"
+            },
+            {
+                "name": "amounts",
+                "type": "uint256[]",
+                "internalType": "uint256[]"
+            },
+            {
+                "name": "authStatuses",
+                "type": "bool[]",
+                "internalType": "bool[]"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "getUserLoans",
+        "inputs": [
+            {
+                "name": "user",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256[]",
+                "internalType": "uint256[]"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "getUserNFTDetail",
+        "inputs": [
+            {
+                "name": "_user",
+                "type": "address",
+                "internalType": "address"
+            },
+            {
+                "name": "_tokenId",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "bool",
+                "internalType": "bool"
+            },
+            {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "getUserNFTs",
+        "inputs": [
+            {
+                "name": "_user",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256[]",
+                "internalType": "uint256[]"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "validateLoanCreationView",
+        "inputs": [
+            {
+                "name": "tokenId",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "duration",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "view"
+    },
+    {
+        "type": "error",
+        "name": "InvalidLoanDuration",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "LoanAlreadyExists",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "LoanDataNotFoundForLoanId",
+        "inputs": []
+    }
+]

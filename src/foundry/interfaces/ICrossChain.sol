@@ -3,7 +3,8 @@ pragma solidity ^0.8.20;
 
 enum PaymentType {
     Buffer,
-    EMI
+    EMI,
+    FullRepayment
 }
 
 interface IAutomationLoanInternal {
@@ -27,4 +28,4 @@ interface IAutomationLoanInternal {
         uint256 amountReceived,
         address tokenReceived
     ) external;
-} 
+}

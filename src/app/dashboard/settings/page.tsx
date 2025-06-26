@@ -1,12 +1,16 @@
 "use client";
-
-import { useState } from "react";
+// Add these imports at the top
+import { createClient } from "../../../../supabase/client";
+import { useWallet } from "../../../lib/web3/wallet-provider";
+import { Loader2, Wallet, Link as LinkIcon, Check, AlertCircle } from "lucide-react"; // Add new icons
+import { useState, useEffect } from "react";
 import { useSettingsData } from "../../../hooks/use-settings-data";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -62,6 +66,62 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
   const [showAPIKey, setShowAPIKey] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const supabase = createClient();
+  const { address: connectedAddress, isConnected, connect: connectWallet } = useWallet();
+
+  const [savedAddress, setSavedAddress] = useState<string | null>(null);
+  const [isSavingWallet, setIsSavingWallet] = useState(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
+  const [walletSuccess, setWalletSuccess] = useState<string | null>(null);
+
+  // Fetch the saved wallet address when the component mounts or the user changes
+  useEffect(() => {
+    const fetchProfileWallet = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('wallet_address')
+          .eq('id', user.id)
+          .single();
+
+        if (profile) {
+          setSavedAddress(profile.wallet_address);
+        }
+      }
+    };
+
+    fetchProfileWallet();
+  }, [supabase]);
+
+  const handleSaveWalletAddress = async () => {
+    setIsSavingWallet(true);
+    setWalletError(null);
+    setWalletSuccess(null);
+
+    if (!connectedAddress) {
+      setWalletError("Please connect your wallet first.");
+      setIsSavingWallet(false);
+      return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ wallet_address: connectedAddress })
+        .eq('id', user.id);
+
+      if (error) {
+        setWalletError(`Failed to save address: ${error.message}`);
+      } else {
+        setSavedAddress(connectedAddress);
+        setWalletSuccess("Wallet address saved successfully!");
+      }
+    }
+    setIsSavingWallet(false);
+  };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -330,6 +390,54 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wallet className="w-5 h-5" />
+                Wallet Management
+              </CardTitle>
+              <CardDescription>
+                This is the wallet address where your asset NFTs will be minted.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="saved-address">Saved Wallet Address</Label>
+                <Input
+                  id="saved-address"
+                  value={savedAddress || 'No address has been saved yet.'}
+                  disabled
+                  className="font-mono bg-gray-50"
+                />
+                <p className="text-xs text-gray-500">This address is used for receiving your tokenized assets.</p>
+              </div>
+
+              <div className="p-4 border rounded-lg bg-secondary/50 space-y-3">
+                <Label className="flex items-center gap-2">
+                  <LinkIcon className="h-4 w-4" />
+                  Currently Connected Wallet
+                </Label>
+                {isConnected && connectedAddress ? (
+                  <p className="font-mono text-sm">{connectedAddress}</p>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={connectWallet}>Connect Wallet</Button>
+                )}
+              </div>
+
+              {walletError && <p className="text-sm text-red-500 flex items-center gap-2"><AlertCircle className="h-4 w-4" />{walletError}</p>}
+              {walletSuccess && <p className="text-sm text-green-500 flex items-center gap-2"><Check className="h-4 w-4" />{walletSuccess}</p>}
+
+              <div className="pt-4 border-t">
+                <Button
+                  onClick={handleSaveWalletAddress}
+                  disabled={isSavingWallet || !connectedAddress || connectedAddress === savedAddress}
+                >
+                  {isSavingWallet ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                  {connectedAddress === savedAddress ? 'Address is Up to Date' : 'Save Connected Address'}
+                </Button>
               </div>
             </CardContent>
           </Card>

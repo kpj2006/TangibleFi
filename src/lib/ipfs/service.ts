@@ -25,6 +25,7 @@ export interface AssetMetadata {
         blockchain: string;
         verification_status: string;
         created_at: string;
+        modified_at?: string;
     };
 }
 

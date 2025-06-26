@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import AssetApprovalSection from "@/components/admin/asset-approval";
 import {
   Card,
   CardContent,
@@ -35,6 +36,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
+
 const AdminDashboard: React.FC = () => {
   const {
     isAdmin,
@@ -48,6 +50,9 @@ const AdminDashboard: React.FC = () => {
     networkStats,
     isLoading,
     hasError,
+    assetsError, // <-- Add this line to destructure assetsError from useAdmin
+    // Add assetsLoading if available from useAdmin
+    assetsLoading,
     verifyAdmin,
     refreshAll,
     updateUserStatus,
@@ -508,105 +513,34 @@ const AdminDashboard: React.FC = () => {
           </TabsContent>
 
           {/* Assets Tab */}
+
           <TabsContent value="assets" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Building2 className="w-5 h-5 mr-2" />
-                  Asset Management
-                </CardTitle>
-                <CardDescription>
-                  Verify assets and manage asset values
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 px-4">Asset</th>
-                        <th className="text-left py-3 px-4">Type</th>
-                        <th className="text-left py-3 px-4">Value</th>
-                        <th className="text-left py-3 px-4">Status</th>
-                        <th className="text-left py-3 px-4">Blockchain</th>
-                        <th className="text-left py-3 px-4">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {assets.map((asset) => (
-                        <tr
-                          key={asset.id}
-                          className="border-b hover:bg-gray-50"
-                        >
-                          <td className="py-3 px-4">
-                            <div>
-                              <p className="font-medium">{asset.name}</p>
-                              <p className="text-sm text-gray-500">
-                                {asset.location}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">{asset.type}</td>
-                          <td className="py-3 px-4">
-                            <div>
-                              <p className="font-medium">
-                                {formatCurrency(asset.currentValue)}
-                              </p>
-                              <p className="text-sm text-gray-500">
-                                Original: {formatCurrency(asset.originalValue)}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge
-                              className={getStatusColor(
-                                asset.verificationStatus
-                              )}
-                            >
-                              {asset.verificationStatus}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge className="bg-blue-100 text-blue-800">
-                              {asset.blockchain}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex gap-2">
-                              {asset.verificationStatus === "pending" && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() =>
-                                      verifyAsset(asset.id, "verified")
-                                    }
-                                  >
-                                    <CheckCircle className="w-3 h-3 mr-1" />
-                                    Verify
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() =>
-                                      verifyAsset(asset.id, "rejected")
-                                    }
-                                  >
-                                    <XCircle className="w-3 h-3 mr-1" />
-                                    Reject
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            {/* We are now directly using the AssetApprovalSection component */}
+            {/* and passing it the data and functions from our useAdmin hook. */}
+            <AssetApprovalSection
+              assets={assets}
+              isLoading={assetsLoading}
+              error={assetsError}
+              // The 'isProcessing' prop can be tied to the specific assetsLoading state
+              isProcessing={assetsLoading}
+              onApprove={(assetToApprove) => {
+                // The verifyAsset function from useAdmin is already configured to do everything.
+                // We just need to call it with the correct parameters.
+                verifyAsset(assetToApprove, 'verified');
+              }}
+              onReject={(assetId, reason) => {
+                // Find the full asset object from our state, as the hook requires it.
+                const assetToReject = assets.find(asset => asset.id === assetId);
+                if (assetToReject) {
+                  verifyAsset(assetToReject, 'rejected', reason);
+                } else {
+                  console.error("Could not find asset to reject in the state.");
+                }
+              }}
+            />
           </TabsContent>
+
+
 
           {/* Contracts Tab */}
           <TabsContent value="contracts" className="space-y-6">

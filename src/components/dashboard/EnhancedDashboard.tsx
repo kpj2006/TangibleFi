@@ -232,14 +232,14 @@ function MarketInsightsCard() {
                   {insight.type}
                 </Badge>
                 <Badge variant="outline" className="text-xs">
-                  {insight.urgency}
+                  {"urgency" in insight ? insight.urgency : "Normal"}
                 </Badge>
               </div>
               <h4 className="font-medium text-sm">{insight.title}</h4>
               <p className="text-xs text-gray-600 mt-1">
                 {insight.description}
               </p>
-              {insight.recommendation && (
+              {"recommendation" in insight && insight.recommendation && (
                 <p className="text-xs text-blue-600 mt-1 font-medium">
                   💡 {insight.recommendation}
                 </p>

@@ -1,3 +1,9 @@
+import AuthUserAbi from '@/contracts/abis/AuthUser.json';
+import AutomationLoanAbi from '@/contracts/abis/AutomationLoan.json';
+import ViewFacetAbi from '@/contracts/abis/ViewFacet.json';
+import CrossChainFacetAbi from '@/contracts/abis/CrossChainFacet.json';
+import DiamondLoupeFacetAbi from '@/contracts/abis/DiamondLoupeFacet.json';
+
 // Blockchain Configuration for Real Data Integration
 export interface NetworkConfig {
     chainId: number;
@@ -115,10 +121,9 @@ export const SUPPORTED_NETWORKS: Record<string, NetworkConfig> = {
             decimals: 18,
         },
         contracts: {
-            diamond: process.env.NEXT_PUBLIC_SEPOLIA_DIAMOND_ADDRESS ||
-                "0x4e37Ae8AEECb70b548DfE370a3fE442ef83Eb20c",
-            authUser: process.env.NEXT_PUBLIC_SEPOLIA_AUTH_USER_ADDRESS ||
-                "0xF21BaC0864E865B34d94F6D117B81f5Ff00a522B",
+            diamond: process.env.NEXT_PUBLIC_SEPOLIA_DIAMOND_ADDRESS
+            // authUser: process.env.NEXT_PUBLIC_SEPOLIA_AUTH_USER_ADDRESS ||
+            //     "0xF21BaC0864E865B34d94F6D117B81f5Ff00a522B",
         },
     },
 };
@@ -128,9 +133,11 @@ export const TESTNET_NETWORKS = ["sepolia"];
 
 // Contract ABIs (will be populated from deployed contracts)
 export const CONTRACT_ABIS = {
-    diamond: [], // Import from deployed Diamond contract
-    authUser: [], // Import from deployed AuthUser contract
-    loanManager: [], // Import from deployed LoanManager contract
+    ViewFacet: ViewFacetAbi,
+    AuthUser: AuthUserAbi,
+    AutomationLoan: AutomationLoanAbi,
+    CrossChainFacet: CrossChainFacetAbi,
+    DiamondLoupeFacet: DiamondLoupeFacetAbi,
     ERC20: [
         "function balanceOf(address owner) view returns (uint256)",
         "function transfer(address to, uint256 amount) returns (bool)",

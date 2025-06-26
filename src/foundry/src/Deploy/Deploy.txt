@@ -122,3 +122,136 @@ ViewFacet: 0x01eC96Bd4C9271063800f4D6CaB6f7AeDa57a1E4
 CrossChainFacet: 0x6B8AeAD3c9f279ffC6b72bBB20703c597aB6fC2d
 AutomationLoan: 0x9AE7E7F0d6E4767ad4602633f0806Adb5E0F49C7
 ------------------------
+
+
+
+
+Final Deployment 
+
+
+Deploying contracts with the account: 0x9aD95Ef94D945B039eD5E8059603119b61271486
+Account balance: 0.025984168732330128
+Deploying DiamondCutFacet...
+Loaded DiamondCutFacet artifact with 4 ABI entries
+Functions in DiamondCutFacet ABI: 1
+DiamondCutFacet deployed to: 0xE1B17FF9Ac61611A255d192100Bcf23c543Fd00D
+Deploying Diamond...
+Loaded Diamond artifact with 6 ABI entries
+Functions in Diamond ABI: 0
+Diamond deployed to: 0xEfE193A5862152e229aFbDB9F4F8C89129FCd43D
+Deploying DiamondInit...
+Loaded DiamondInit artifact with 1 ABI entries
+Functions in DiamondInit ABI: 1
+DiamondInit deployed to: 0x15B0938bF57ec733c08548F4112fDcE2ea5a6cE3
+Deploying DiamondLoupeFacet...
+Loaded DiamondLoupeFacet artifact with 5 ABI entries
+Functions in DiamondLoupeFacet ABI: 5
+DiamondLoupeFacet deployed to: 0x8D230E1929d5e013747a6eb1Cc43c46219069A68
+Deploying OwnershipFacet...
+Loaded OwnershipFacet artifact with 5 ABI entries
+Functions in OwnershipFacet ABI: 3
+OwnershipFacet deployed to: 0xEF4B4170D81260a1c5565bB94b8113391475E700
+Deploying AuthUser...
+Loaded AuthUser artifact with 28 ABI entries
+Functions in AuthUser ABI: 14
+AuthUser deployed to: 0xdBd6e08487F4739A7Bf426fd4dA53Edf853a6AA5
+Deploying ViewFacet...
+Loaded ViewFacet artifact with 16 ABI entries
+Functions in ViewFacet ABI: 13
+ViewFacet deployed to: 0x00977898E5c69B3F60a7de28d91a3d157834cEcb
+
+Using Sepolia CCIP Router address: 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59
+Deploying CrossChainFacet...
+Loaded CrossChainFacet artifact with 6 ABI entries
+Functions in CrossChainFacet ABI: 3
+CrossChainFacet deployed to: 0xd08ee2a64208ff1759917bbBfD290d571A6395e9
+Deploying AutomationLoan...
+Loaded AutomationLoan artifact with 28 ABI entries
+Functions in AutomationLoan ABI: 11
+AutomationLoan deployed to: 0xd61406ea3591417deDCdb7D7f30242478A237F1E
+Getting selectors for DiamondLoupeFacet:
+  Function: facetAddress, Selector: 0xcdffacc6
+  Function: facetAddresses, Selector: 0x52ef6b2c
+  Function: facetFunctionSelectors, Selector: 0xadfca15e
+  Function: facets, Selector: 0x7a0ed627
+  Function: supportsInterface, Selector: 0x01ffc9a7
+  Total selectors found: 5
+Added DiamondLoupeFacet with 5 selectors
+Getting selectors for OwnershipFacet:
+  Function: owner, Selector: 0x8da5cb5b
+  Function: renounceOwnership, Selector: 0x715018a6
+  Function: transferOwnership, Selector: 0xf2fde38b
+  Total selectors found: 3
+Added OwnershipFacet with 3 selectors
+Getting selectors for AuthUser:
+  Function: approve, Selector: 0x095ea7b3
+  Function: balanceOf, Selector: 0x70a08231
+  Function: getApproved, Selector: 0x081812fc
+  Function: isApprovedForAll, Selector: 0xe985e9c5
+  Function: mintAuthNFT, Selector: 0x061573b3
+  Function: name, Selector: 0x06fdde03
+  Function: ownerOf, Selector: 0x6352211e
+  Error getting selector for safeTransferFrom: ambiguous function description (i.e. matches "safeTransferFrom(address,address,uint256)", "safeTransferFrom(address,address,uint256,bytes)") (argument="key", value="safeTransferFrom", code=INVALID_ARGUMENT, version=6.14.4)
+  Error getting selector for safeTransferFrom: ambiguous function description (i.e. matches "safeTransferFrom(address,address,uint256)", "safeTransferFrom(address,address,uint256,bytes)") (argument="key", value="safeTransferFrom", code=INVALID_ARGUMENT, version=6.14.4)
+  Function: setApprovalForAll, Selector: 0xa22cb465
+  Function: supportsInterface, Selector: 0x01ffc9a7
+  Function: symbol, Selector: 0x95d89b41
+  Function: tokenURI, Selector: 0xc87b56dd
+  Function: transferFrom, Selector: 0x23b872dd
+  Total selectors found: 12
+⚠️ WARNING: Found duplicate selectors in AuthUser:
+  0x01ffc9a7 is already registered in DiamondLoupeFacet
+Added AuthUser with 11 unique selectors
+Getting selectors for ViewFacet:
+  Function: calculateInterestRate, Selector: 0x90d3b379
+  Function: calculateLoanTerms, Selector: 0x27bec4f4
+  Function: calculateTotalCurrentDebt, Selector: 0x4d76d687
+  Function: calculateTotalDebt, Selector: 0x7a6493e6
+  Function: calculateTotalInterest, Selector: 0xc8b11e40
+  Function: getLoanByAccountId, Selector: 0x7ff843f9
+  Function: getLoanById, Selector: 0x08ab36c6
+  Function: getOverdueLoanIds, Selector: 0x87480376
+  Function: getUserInvestments, Selector: 0xc52c5c88
+  Function: getUserLoans, Selector: 0x02bf321f
+  Function: getUserNFTDetail, Selector: 0x0828c8df
+  Function: getUserNFTs, Selector: 0x52de4ee5
+  Function: validateLoanCreationView, Selector: 0x2dc4eb63
+  Total selectors found: 13
+Added ViewFacet with 13 selectors
+Getting selectors for AutomationLoan:
+  Function: _activateLoanWithBuffer, Selector: 0x7b041a5e
+  Function: _creditCrossChainEMI, Selector: 0x185cff39
+  Function: _handleCrossChainPayment, Selector: 0x6431349c
+  Function: checkUpkeep, Selector: 0x6e04ff0d
+  Function: createLoan, Selector: 0x08b710e5
+  Function: diamondAddress, Selector: 0x6a60c3b7
+  Function: makeMonthlyPayment, Selector: 0xb3a0b2f2
+  Function: performUpkeep, Selector: 0x4585e33b
+  Function: repayLoanFull, Selector: 0x9a11e339
+  Function: testBufferPayment, Selector: 0xe7ceb767
+  Function: userAccountNFT, Selector: 0x44450f7a
+  Total selectors found: 11
+Added AutomationLoan with 11 selectors
+Getting selectors for CrossChainFacet:
+  Function: ccipReceive, Selector: 0x85572ffb
+  Function: getRouter, Selector: 0xb0f479a1
+  Function: supportsInterface, Selector: 0x01ffc9a7
+  Total selectors found: 3
+⚠️ WARNING: Found duplicate selectors in CrossChainFacet:
+  0x01ffc9a7 is already registered in DiamondLoupeFacet
+Added CrossChainFacet with 2 unique selectors
+Calling diamondCut to add 6 facets...
+Diamond cut transaction: 0xee2c2afbb1292c6d11482c276d4a4b9775a95ec6fc691e4a8ac436d6436554ad
+Diamond cut completed! Gas used: 1880175
+
+--- DEPLOYMENT SUMMARY ---
+Diamond: 0xEfE193A5862152e229aFbDB9F4F8C89129FCd43D
+DiamondCutFacet: 0xE1B17FF9Ac61611A255d192100Bcf23c543Fd00D
+DiamondLoupeFacet: 0x8D230E1929d5e013747a6eb1Cc43c46219069A68
+DiamondInit: 0x15B0938bF57ec733c08548F4112fDcE2ea5a6cE3
+OwnershipFacet: 0xEF4B4170D81260a1c5565bB94b8113391475E700
+AuthUser: 0xdBd6e08487F4739A7Bf426fd4dA53Edf853a6AA5
+ViewFacet: 0x00977898E5c69B3F60a7de28d91a3d157834cEcb
+CrossChainFacet: 0xd08ee2a64208ff1759917bbBfD290d571A6395e9
+AutomationLoan: 0xd61406ea3591417deDCdb7D7f30242478A237F1E
+------------------------

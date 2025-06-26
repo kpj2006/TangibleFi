@@ -30,7 +30,7 @@ cp env.example .env.local
 ### Step 3: Environment Configuration
 
 Edit `.env.local` with your credentials:
-
+ 
 ```bash
 # Required: Get from https://supabase.com
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url

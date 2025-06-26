@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import {Client} from "@chainlink/contracts/src/v0.8/ccip/libraries/Client.sol";
 import {IAutomationLoanInternal, PaymentType} from "../../interfaces/ICrossChain.sol";
@@ -45,4 +45,4 @@ library LibCrossChain {
 
         if (!success) revert CrossChainHandlerFailed();
     }
-} 
+}

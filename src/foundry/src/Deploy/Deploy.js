@@ -1,7 +1,7 @@
 const { ethers } = require("ethers");
 const fs = require("fs");
 const path = require("path");
-require("dotenv").config({ path: path.resolve(__dirname, "../../.env") });
+ require("dotenv").config({ path: path.resolve(__dirname, "../../../../.env") });
 
 // Keep a cache of loaded artifacts
 const artifactCache = new Map();
@@ -150,7 +150,7 @@ async function main() {
     console.log("AuthUser deployed to:", AuthUser.target);
 
     // Deploy ViewFacet
-    const ViewFacet = await deployContract("viewFacet", [], deployer);
+    const ViewFacet = await deployContract("ViewFacet", [], deployer);
     console.log("ViewFacet deployed to:", ViewFacet.target);
 
     // Deploy CrossChainFacet (needs router address parameter)
@@ -184,15 +184,11 @@ async function main() {
     }
 
     // Deploy AutomationLoan
-    const AutomationLoan = await deployContract(
-      "AutomationLoan",
-      [
-        AuthUser.target, // _nftContract - The AuthUser acts as the NFT contract
-        AuthUser.target, // _userAccountNFT - Also using AuthUser for user accounts
-        ViewFacet.target, // _viewFacet
-      ],
-      deployer
-    );
+   const AutomationLoan = await deployContract(
+  "AutomationLoan",
+  [Diamond.target], // Only one argument!
+  deployer
+);
     console.log("AutomationLoan deployed to:", AutomationLoan.target);
 
     // Process facets and check for selectors
@@ -208,7 +204,7 @@ async function main() {
         contractName: "OwnershipFacet",
       },
       { name: "AuthUser", contract: AuthUser, contractName: "AuthUser" },
-      { name: "ViewFacet", contract: ViewFacet, contractName: "viewFacet" },
+      { name: "ViewFacet", contract: ViewFacet, contractName: "ViewFacet" },
       {
         name: "AutomationLoan",
         contract: AutomationLoan,

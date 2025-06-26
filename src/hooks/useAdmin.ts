@@ -1,12 +1,85 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-    AdminAction,
-    AdminAsset,
-    adminService,
-    AdminUser,
-    ContractInfo,
-    SystemMetrics,
-} from "@/lib/admin/admin-service";
+
+import { createClient } from '../../supabase/client'; // For direct DB interaction
+import { useWallet } from '@/lib/web3/wallet-provider';
+import * as diamond from '@/lib/web3/diamond'; // Our REAL diamond service
+/// --- ADD THESE TYPE DEFINITIONS AT THE TOP OF THE FILE ---
+
+export interface SystemMetrics {
+    totalUsers: number;
+    totalAssets: number;
+    totalValueLocked: number;
+    systemHealth: 'healthy' | 'warning' | 'critical';
+    activeLoans: number;
+    pendingVerifications: number;
+    transactionCount24h: number;
+}
+
+export interface AdminUser {
+    id: string;
+    fullName?: string;
+    email?: string;
+    walletAddress: string;
+    kycStatus: 'pending' | 'verified' | 'rejected';
+    accountStatus: 'active' | 'suspended' | 'banned';
+    totalAssets: number;
+    totalLoans: number;
+}
+
+export interface ContractInfo {
+    name: string;
+    network: string;
+    address: string;
+    isActive: boolean;
+    version: string;
+}
+
+export interface AdminAction {
+    id: string;
+    action: string;
+    timestamp: string;
+    result: 'success' | 'failure';
+    target: string;
+    adminAddress: string;
+    details?: any;
+}
+
+// This is the most important one, ensure it has all required fields.
+// in useAdmin.ts
+
+export interface AdminAsset {
+    id: string;
+    name: string;
+    location: string;
+    type: string; // Your UI uses 'type', which we map from 'asset_type'
+    currentValue: number;
+    original_value: number;
+    verificationStatus: 'pending' | 'minted' | 'rejected' | 'verified' | 'under-review'; // Add 'under-review'
+    blockchain: string;
+    documents: { metadata_uri: string; ipfs_hash: string; };
+    user_profile?: { wallet_address?: string; };
+    user_id: string;
+    created_at: string; // Add this
+    description: string; // Add this
+    riskScore?: number; // Add as optional
+    collateralRatio?: number; // Add as optional
+}
+// --- ADD THIS MOCK SERVICE BELOW YOUR TYPE DEFINITIONS ---
+
+const adminService = {
+    getSystemMetrics: async (): Promise<SystemMetrics> => ({ totalUsers: 0, totalAssets: 0, totalValueLocked: 0, systemHealth: 'healthy', activeLoans: 0, pendingVerifications: 0, transactionCount24h: 0 }),
+    getUsers: async (page: number, limit: number) => ({ users: [], total: 0 }),
+    getContracts: async (): Promise<ContractInfo[]> => [],
+    getActions: async (page: number, limit: number) => ({ actions: [], total: 0 }),
+    updateUserStatus: async (id: string, status: string) => true,
+    updateKYCStatus: async (id: string, status: string) => true,
+    updateAssetValue: async (id: string, value: number) => true,
+    executeContractFunction: async (address: string, func: string, args: any[], net: string) => "0xmock...",
+    pauseContract: async (address: string, net: string) => "0xmock...",
+    unpauseContract: async (address: string, net: string) => "0xmock...",
+    updateSystemFees: async (type: string, fee: number) => true,
+    exportData: async (type: string) => ({}),
+};
 
 export interface UseAdminReturn {
     // Admin status
@@ -57,7 +130,7 @@ export interface UseAdminReturn {
 
     // Asset management
     verifyAsset: (
-        assetId: string,
+        asset: AdminAsset,
         status: "verified" | "rejected",
         notes?: string,
     ) => Promise<boolean>;
@@ -91,6 +164,8 @@ export interface UseAdminReturn {
 }
 
 export function useAdmin(): UseAdminReturn {
+    const supabase = createClient();
+    const { signer, address: adminWalletAddress, isConnected } = useWallet();
     // Admin status - temporarily allow admin access for development
     const [isAdmin, setIsAdmin] = useState(true); // Changed from false to true for development
     const [isVerified, setIsVerified] = useState(true); // Changed from false to true for development
@@ -181,6 +256,7 @@ export function useAdmin(): UseAdminReturn {
         }
     }, [isAdmin]);
 
+
     // Fetch system metrics
     const fetchMetrics = useCallback(async () => {
         if (!isAdmin) return;
@@ -224,6 +300,12 @@ export function useAdmin(): UseAdminReturn {
     }, [isAdmin]);
 
     // Fetch assets
+
+
+    // in src/hooks/useAdmin.ts
+
+    // PASTE THIS NEW FUNCTION IN src/hooks/useAdmin.ts
+
     const fetchAssets = useCallback(async () => {
         if (!isAdmin) return;
 
@@ -231,19 +313,65 @@ export function useAdmin(): UseAdminReturn {
         setAssetsError(null);
 
         try {
-            const assetsList = await adminService.getAssets(1, 100);
-            setAssets(assetsList.assets);
+            // This query now explicitly selects all the fields we need, including 'documents'.
+            const { data, error: dbError } = await supabase
+                .from("assets")
+                .select(`
+                id,
+                name,
+                asset_type,
+                description,
+                location,
+                original_value,
+                current_value,
+                verification_status,
+                blockchain,
+                created_at,
+                documents,
+                user_id,
+                risk_score,
+                collateral_ratio,
+                user_profile:profiles!inner(wallet_address, email)
+            `);
+
+            if (dbError) {
+                console.error("Supabase fetch error details:", dbError);
+                throw new Error(`Database error: ${dbError.message}`);
+            }
+
+            // This mapping now correctly includes the 'documents' field and all others
+            // required by the AdminAsset type.
+            const mappedAssets: AdminAsset[] = data?.map(item => ({
+                id: item.id,
+                name: item.name,
+                location: item.location || 'N/A',
+                type: item.asset_type,
+                currentValue: item.current_value,
+                original_value: item.original_value,
+                verificationStatus: item.verification_status,
+                blockchain: item.blockchain,
+                documents: item.documents, // <-- This is the crucial line
+                user_profile: Array.isArray(item.user_profile) && item.user_profile.length > 0 ? {
+                    wallet_address: item.user_profile[0].wallet_address,
+                    email: item.user_profile[0].email
+                } : undefined,
+                user_id: item.user_id,
+                created_at: item.created_at,
+                description: item.description,
+                riskScore: item.risk_score || 0,
+                collateralRatio: item.collateral_ratio || 0,
+            })) || [];
+
+            setAssets(mappedAssets);
+
         } catch (error) {
-            const errorMessage = error instanceof Error
-                ? error.message
-                : "Failed to load assets";
+            const errorMessage = error instanceof Error ? error.message : "Failed to load assets";
             setAssetsError(errorMessage);
             console.error("Assets fetch error:", error);
         } finally {
             setAssetsLoading(false);
         }
-    }, [isAdmin]);
-
+    }, [isAdmin, supabase]);
     // Fetch contracts
     const fetchContracts = useCallback(async () => {
         if (!isAdmin) return;
@@ -367,30 +495,88 @@ export function useAdmin(): UseAdminReturn {
     );
 
     // Asset management functions
+
     const verifyAsset = useCallback(
         async (
-            assetId: string,
+            asset: AdminAsset, // Pass the entire asset object
             status: "verified" | "rejected",
             notes?: string,
         ): Promise<boolean> => {
-            if (!isAdmin) return false;
-
-            try {
-                const success = await adminService.verifyAsset(
-                    assetId,
-                    status,
-                    notes,
-                );
-                if (success) {
-                    await refreshAssets();
-                }
-                return success;
-            } catch (error) {
-                console.error("Verify asset error:", error);
+            if (!isAdmin) {
+                setAssetsError("Admin access required.");
                 return false;
             }
+            if (!signer) {
+                setAssetsError("Admin wallet is not connected or signer is unavailable.");
+                return false;
+            }
+
+            // Set a general processing state if you want a global spinner
+            setAssetsLoading(true);
+            setAssetsError(null);
+
+            try {
+                if (status === "verified") {
+                    // --- APPROVE AND MINT LOGIC ---
+                    if (!asset.user_profile?.wallet_address) {
+                        throw new Error(`Cannot mint: User for asset '${asset.name}' has no wallet address saved.`);
+                    }
+
+                    if (!asset.documents || typeof asset.documents !== 'object') {
+                        throw new Error("Asset documents/metadata is missing or malformed.");
+                    }
+
+                    // 2. The 'documents' field from Supabase is already an object if you selected it as jsonb.
+                    //    If it's a string, you would parse it: const metadata = JSON.parse(asset.documents);
+                    const metadata = asset.documents;
+
+                    const metadataUrl = metadata.metadata_uri;
+                    if (!metadataUrl) {
+                        throw new Error("Metadata URI is missing from the asset's documents.");
+                    }
+                    const valuation = asset.original_value.toString();
+                    const userWalletAddress = asset.user_profile.wallet_address;
+                    // 1. MINT THE NFT
+                    const txHash = await diamond.mintAuthNFT(
+                        signer,
+                        userWalletAddress, // This is the 'to' address
+                        metadataUrl,
+                        valuation
+                    );
+                    // 2. UPDATE THE DATABASE
+                    await supabase
+                        .from("assets")
+                        .update({
+                            verification_status: 'minted', // We can use a 'minted' status
+                            tx_hash: txHash,
+                        })
+                        .eq("id", asset.id);
+
+                } else {
+                    // --- REJECT LOGIC ---
+                    await supabase
+                        .from("assets")
+                        .update({
+                            verification_status: 'rejected',
+                            // You could also add a 'notes' column to store the rejection reason
+                        })
+                        .eq("id", asset.id);
+                }
+
+                // 3. REFRESH THE ASSET LIST to show the change
+                await fetchAssets();
+                return true;
+
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : "Failed to process asset.";
+                setAssetsError(errorMessage);
+                console.error("Verify asset error:", error);
+                return false;
+            } finally {
+                setAssetsLoading(false);
+            }
         },
-        [isAdmin, refreshAssets],
+        [isAdmin, signer, supabase, fetchAssets], // Add new dependencies
     );
 
     const updateAssetValue = useCallback(
@@ -518,11 +704,15 @@ export function useAdmin(): UseAdminReturn {
         [isAdmin],
     );
 
+
+
     // Computed values
     const isLoading = metricsLoading || usersLoading || assetsLoading ||
         contractsLoading || actionsLoading;
     const hasError = !!(metricsError || usersError || assetsError ||
         contractsError || actionsError);
+
+
 
     return {
         // Admin status
