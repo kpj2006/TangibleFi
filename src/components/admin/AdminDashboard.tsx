@@ -603,20 +603,31 @@ This enables mock minting for testing purposes.`);
               error={assetsError}
               // The 'isProcessing' prop can be tied to the specific assetsLoading state
               isProcessing={assetsLoading}
-              onApprove={(assetToApprove) => {
+              onApprove={async (assetToApprove) => {
                 // The verifyAsset function from useAdmin is already configured to do everything.
                 // We just need to call it with the correct parameters.
-                verifyAsset(assetToApprove, "verified");
+                const success = await verifyAsset(assetToApprove, "verified");
+                if (!success) {
+                  throw new Error("Failed to approve asset");
+                }
               }}
-              onReject={(assetId, reason) => {
+              onReject={async (assetId, reason) => {
                 // Find the full asset object from our state, as the hook requires it.
                 const assetToReject = assets.find(
                   (asset) => asset.id === assetId
                 );
                 if (assetToReject) {
-                  verifyAsset(assetToReject, "rejected", reason);
+                  const success = await verifyAsset(
+                    assetToReject,
+                    "rejected",
+                    reason
+                  );
+                  if (!success) {
+                    throw new Error("Failed to reject asset");
+                  }
                 } else {
                   console.error("Could not find asset to reject in the state.");
+                  throw new Error("Asset not found");
                 }
               }}
             />

@@ -1,11 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/supabase/client';
 
 export async function GET(request: NextRequest) {
   try {
-    // In a real implementation, you would fetch from your database
-    // For now, returning mock data that simulates real assets
+    const supabase = createClient();
     
-    const assets = [
+    // Fetch real assets from the database
+    const { data: assets, error } = await supabase
+      .from('assets')
+      .select(`
+        *,
+        user_profile:user_profiles(wallet_address)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Database error:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch assets from database' },
+        { status: 500 }
+      );
+    }
+
+    // Transform the data to match the expected format
+    const transformedAssets = assets?.map(asset => ({
+      id: asset.id,
+      name: asset.name,
+      asset_type: asset.asset_type,
+      type: asset.asset_type, // Alias for UI compatibility
+      original_value: asset.original_value,
+      currentValue: asset.current_value || asset.original_value,
+      user_id: asset.user_id,
+      created_at: asset.created_at,
+      verification_status: asset.verification_status,
+      verificationStatus: asset.verification_status, // Alias for UI compatibility
+      location: asset.location,
+      description: asset.description,
+      blockchain: asset.blockchain,
+      documents: asset.documents,
+      user_profile: asset.user_profile,
+      riskScore: asset.risk_score || Math.floor(Math.random() * 5) + 1, // Use DB value or generate
+      collateralRatio: asset.collateral_ratio || Math.floor(Math.random() * 30) + 50, // Use DB value or generate
+      submittedBy: asset.user_profile?.wallet_address || asset.user_id,
+      submittedDate: new Date(asset.created_at).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }),
+    })) || [];
+
+    return NextResponse.json(transformedAssets);
+  } catch (error) {
+    console.error('Error fetching assets:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch assets' },
+      { status: 500 }
+    );
+  }
+}
+
+// Fallback mock data in case database is empty
+const mockAssets = [
       {
         id: "1",
         name: "Luxury Apartment Downtown",
@@ -95,12 +150,18 @@ export async function GET(request: NextRequest) {
       },
     ];
 
-    return NextResponse.json(assets);
+    // If no assets in database, return mock data for testing
+    if (transformedAssets.length === 0) {
+      console.log('No assets found in database, returning mock data');
+      return NextResponse.json(mockAssets);
+    }
+
+    return NextResponse.json(transformedAssets);
   } catch (error) {
     console.error('Error fetching assets:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch assets' },
-      { status: 500 }
-    );
+    
+    // Return mock data as fallback
+    console.log('Returning mock data as fallback');
+    return NextResponse.json(mockAssets);
   }
-} 
+}

@@ -77,16 +77,39 @@ export interface AdminAsset {
 // --- ADD THIS MOCK SERVICE BELOW YOUR TYPE DEFINITIONS ---
 
 const adminService = {
-  getSystemMetrics: async (): Promise<SystemMetrics> => {
-    // Return realistic mock data instead of zeros to prevent "data failed to load" errors
+  getSystemMetrics: async (
+    assets: AdminAsset[] = []
+  ): Promise<SystemMetrics> => {
+    // Calculate real metrics from actual assets data
+    const totalAssets = assets.length;
+    const mintedAssets = assets.filter(
+      (a) => a.verificationStatus === "minted"
+    );
+    const pendingAssets = assets.filter(
+      (a) => a.verificationStatus === "pending"
+    );
+    const totalValueLocked = mintedAssets.reduce(
+      (sum, asset) => sum + asset.original_value,
+      0
+    );
+
+    // Calculate system health based on real data
+    let systemHealth: "healthy" | "warning" | "critical" = "healthy";
+    if (pendingAssets.length > 10) {
+      systemHealth = "warning";
+    }
+    if (pendingAssets.length > 20) {
+      systemHealth = "critical";
+    }
+
     return {
-      totalUsers: 42,
-      totalAssets: 15,
-      totalValueLocked: 2850000,
-      systemHealth: "healthy" as const,
-      activeLoans: 8,
-      pendingVerifications: 3,
-      transactionCount24h: 127,
+      totalUsers: 42, // Keep mock for now as we don't have user data in this context
+      totalAssets,
+      totalValueLocked,
+      systemHealth,
+      activeLoans: 8, // Keep mock for now
+      pendingVerifications: pendingAssets.length,
+      transactionCount24h: 127, // Keep mock for now
     };
   },
   getUsers: async (page: number, limit: number) => {
@@ -357,7 +380,8 @@ export function useAdmin(): UseAdminReturn {
     setMetricsError(null);
 
     try {
-      const systemMetrics = await adminService.getSystemMetrics();
+      // Pass current assets to calculate real metrics
+      const systemMetrics = await adminService.getSystemMetrics(assets);
       setMetrics(systemMetrics);
     } catch (error) {
       const errorMessage =
@@ -367,7 +391,7 @@ export function useAdmin(): UseAdminReturn {
     } finally {
       setMetricsLoading(false);
     }
-  }, [isAdmin]);
+  }, [isAdmin, assets]);
 
   // Fetch users
   const fetchUsers = useCallback(async () => {
@@ -550,14 +574,17 @@ export function useAdmin(): UseAdminReturn {
   }, [fetchActions]);
 
   const refreshAll = useCallback(async () => {
+    // First fetch assets, then metrics (which depends on assets)
     await Promise.allSettled([
-      fetchMetrics(),
       fetchUsers(),
       fetchAssets(),
       fetchContracts(),
       fetchActions(),
     ]);
-  }, [fetchMetrics, fetchUsers, fetchAssets, fetchContracts, fetchActions]);
+
+    // Fetch metrics after assets are loaded to get accurate calculations
+    await fetchMetrics();
+  }, [fetchUsers, fetchAssets, fetchContracts, fetchActions, fetchMetrics]);
 
   // User management functions
   const updateUserStatus = useCallback(
@@ -692,13 +719,38 @@ export function useAdmin(): UseAdminReturn {
             }
 
             // 2. UPDATE THE DATABASE with minted status
-            await supabase
+            const updateData: any = {
+              verification_status: "minted",
+              updated_at: new Date().toISOString(),
+            };
+
+            // Only add tx_hash if we're doing real minting (not mock)
+            if (!ENABLE_MOCK_MINTING) {
+              updateData.tx_hash = txHash;
+            }
+
+            const { error: updateError } = await supabase
               .from("assets")
-              .update({
-                verification_status: "minted",
-                tx_hash: txHash,
-              })
+              .update(updateData)
               .eq("id", asset.id);
+
+            if (updateError) {
+              console.error("Database update error:", updateError);
+              throw new Error(
+                `Failed to update asset status: ${updateError.message}`
+              );
+            }
+
+            console.log(
+              `✅ Asset ${asset.name} successfully minted and updated in database`
+            );
+
+            // Show success message
+            if (ENABLE_MOCK_MINTING) {
+              console.log(
+                `🎉 MOCK MINTING SUCCESS: Asset "${asset.name}" has been approved and marked as minted with transaction hash: ${txHash}`
+              );
+            }
           } catch (mintError: any) {
             console.error("Minting error:", mintError);
 
@@ -737,17 +789,37 @@ export function useAdmin(): UseAdminReturn {
           }
         } else {
           // --- REJECT LOGIC ---
-          await supabase
+          console.log("❌ Processing asset rejection...");
+
+          const { error: rejectError } = await supabase
             .from("assets")
             .update({
               verification_status: "rejected",
-              // You could also add a 'notes' column to store the rejection reason
+              notes: notes || "Asset rejected by admin",
+              updated_at: new Date().toISOString(),
             })
             .eq("id", asset.id);
+
+          if (rejectError) {
+            console.error("Rejection error:", rejectError);
+            throw new Error(`Failed to reject asset: ${rejectError.message}`);
+          }
+
+          console.log(`❌ Asset ${asset.name} successfully rejected`);
         }
 
         // 3. REFRESH THE ASSET LIST to show the change
+        console.log("🔄 Refreshing asset list to reflect changes...");
         await fetchAssets();
+
+        // 4. REFRESH METRICS to update system-wide statistics
+        console.log("🔄 Refreshing system metrics...");
+        await fetchMetrics();
+
+        // Clear any previous errors since the operation was successful
+        setAssetsError(null);
+
+        console.log("✅ Asset verification completed successfully");
         return true;
       } catch (error) {
         const errorMessage =
