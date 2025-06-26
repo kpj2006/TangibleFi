@@ -36,7 +36,6 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-
 const AdminDashboard: React.FC = () => {
   const {
     isAdmin,
@@ -153,7 +152,7 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="w-full px-6 py-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -178,13 +177,94 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Mock Minting Warning Banner */}
+        <Alert className="mb-6 border-orange-200 bg-orange-50">
+          <Zap className="h-4 w-4 text-orange-600" />
+          <AlertDescription className="text-orange-800">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="font-semibold">🧪 TESTING MODE ENABLED:</span>{" "}
+                Mock minting is currently active. Asset verification will use
+                simulated blockchain transactions instead of real smart contract
+                minting.
+              </div>
+              <Badge
+                variant="outline"
+                className="ml-4 bg-orange-100 text-orange-800 border-orange-300"
+              >
+                Mock Minting ON
+              </Badge>
+            </div>
+            <div className="mt-2 text-sm text-orange-700">
+              This allows testing without smart contract authorization. For
+              production, disable mock minting in{" "}
+              <code className="bg-orange-100 px-1 rounded">
+                src/hooks/useAdmin.ts
+              </code>
+            </div>
+          </AlertDescription>
+        </Alert>
+
         {/* Error Alert */}
         {hasError && (
           <Alert className="mb-6 border-red-200 bg-red-50">
             <AlertTriangle className="h-4 w-4 text-red-600" />
             <AlertDescription className="text-red-600">
-              Some data failed to load. Please refresh the page or check your
-              connection.
+              {assetsError &&
+              assetsError.includes("Smart contract authorization") ? (
+                <div className="space-y-3">
+                  <div className="font-semibold">
+                    Smart Contract Authorization Required
+                  </div>
+                  <div className="text-sm">
+                    The admin wallet
+                    (0x9aD95Ef94D945B039eD5E8059603119b61271486) is not
+                    authorized to mint NFTs on the smart contract.
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        // Copy admin address to clipboard
+                        navigator.clipboard.writeText(
+                          "0x9aD95Ef94D945B039eD5E8059603119b61271486"
+                        );
+                        alert("Admin address copied to clipboard!");
+                      }}
+                    >
+                      Copy Admin Address
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        // Show deployment instructions
+                        alert(`TEMPORARY WORKAROUND FOR TESTING:
+
+1. Open src/hooks/useAdmin.ts
+2. Find line ~597: const txHash = await diamond.mintAuthNFT(...)
+3. Comment it out: // const txHash = await diamond.mintAuthNFT(...)
+4. Uncomment line ~596: const txHash = "0x" + Math.random().toString(16).substr(2, 64);
+
+This enables mock minting for testing purposes.`);
+                      }}
+                    >
+                      Show Testing Workaround
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  Some data failed to load. Please refresh the page or check
+                  your connection.
+                  {assetsError && (
+                    <div className="mt-2 text-sm font-mono bg-red-100 p-2 rounded">
+                      {assetsError}
+                    </div>
+                  )}
+                </div>
+              )}
             </AlertDescription>
           </Alert>
         )}
@@ -526,21 +606,21 @@ const AdminDashboard: React.FC = () => {
               onApprove={(assetToApprove) => {
                 // The verifyAsset function from useAdmin is already configured to do everything.
                 // We just need to call it with the correct parameters.
-                verifyAsset(assetToApprove, 'verified');
+                verifyAsset(assetToApprove, "verified");
               }}
               onReject={(assetId, reason) => {
                 // Find the full asset object from our state, as the hook requires it.
-                const assetToReject = assets.find(asset => asset.id === assetId);
+                const assetToReject = assets.find(
+                  (asset) => asset.id === assetId
+                );
                 if (assetToReject) {
-                  verifyAsset(assetToReject, 'rejected', reason);
+                  verifyAsset(assetToReject, "rejected", reason);
                 } else {
                   console.error("Could not find asset to reject in the state.");
                 }
               }}
             />
           </TabsContent>
-
-
 
           {/* Contracts Tab */}
           <TabsContent value="contracts" className="space-y-6">

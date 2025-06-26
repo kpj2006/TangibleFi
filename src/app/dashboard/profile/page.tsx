@@ -80,6 +80,7 @@ interface UserProfile {
   website: string | null;
   company: string | null;
   job_title: string | null;
+  wallet_address: string | null;
   timezone: string;
   language: string;
   currency: string;
@@ -185,6 +186,15 @@ export default function ProfilePage() {
 
       // Try to check if user profile exists, with better error handling
       try {
+        // First, get wallet_address from users table
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("wallet_address")
+          .eq("id", authUser.id)
+          .single();
+
+        let userWalletAddress = userData?.wallet_address || null;
+
         let { data: existingProfile, error: fetchError } = await supabase
           .from("user_profiles")
           .select("*")
@@ -205,6 +215,7 @@ export default function ProfilePage() {
             website: null,
             company: null,
             job_title: null,
+            wallet_address: userWalletAddress,
             timezone: "UTC",
             language: "en",
             currency: "USD",
@@ -282,7 +293,10 @@ export default function ProfilePage() {
           setProfile(fallbackProfile);
           toast.success("Profile loaded successfully!");
         } else {
-          setProfile(existingProfile);
+          setProfile({
+            ...existingProfile,
+            wallet_address: userWalletAddress,
+          });
         }
       } catch (dbError) {
         console.error("Database error:", dbError);
@@ -358,12 +372,38 @@ export default function ProfilePage() {
 
     setSaving(true);
     try {
-      // Try to update in database first
+      // Update wallet address in users table first
+      if (profile.wallet_address) {
+        try {
+          const { error: walletError } = await supabase
+            .from("users")
+            .update({
+              wallet_address: profile.wallet_address,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", profile.id);
+
+          if (walletError) {
+            console.error("Wallet address update error:", walletError);
+            toast.error("Failed to update wallet address");
+            return;
+          }
+        } catch (walletDbError) {
+          console.error("Wallet database connection error:", walletDbError);
+          toast.error("Failed to update wallet address");
+          return;
+        }
+      }
+
+      // Try to update profile in user_profiles table
       try {
+        const profileData = { ...profile };
+        delete profileData.wallet_address; // Remove wallet_address from user_profiles update
+
         const { error } = await supabase
           .from("user_profiles")
           .update({
-            ...profile,
+            ...profileData,
             updated_at: new Date().toISOString(),
           })
           .eq("id", profile.id);
@@ -872,6 +912,32 @@ export default function ProfilePage() {
                           className={!editing ? "bg-gray-50" : ""}
                           placeholder="https://yourwebsite.com"
                         />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="walletAddress"
+                          className="flex items-center gap-2"
+                        >
+                          <Wallet className="w-4 h-4" />
+                          Wallet Address
+                        </Label>
+                        <Input
+                          id="walletAddress"
+                          value={profile.wallet_address || ""}
+                          onChange={(e) =>
+                            setProfile({
+                              ...profile,
+                              wallet_address: e.target.value,
+                            })
+                          }
+                          disabled={!editing}
+                          className={!editing ? "bg-gray-50" : ""}
+                          placeholder="0x..."
+                        />
+                        <p className="text-xs text-gray-500">
+                          Required for asset tokenization and minting
+                        </p>
                       </div>
                     </div>
 

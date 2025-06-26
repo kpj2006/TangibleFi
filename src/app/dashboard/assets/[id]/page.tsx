@@ -91,10 +91,10 @@ function getStatusBadge(status: string) {
 export default async function AssetViewPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  // Get the id from params directly
-  const { id } = params;
+  // Get the id from params after awaiting
+  const { id } = await params;
   const supabase = await createClient();
 
   const {

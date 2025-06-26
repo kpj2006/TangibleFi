@@ -48,7 +48,6 @@ export default function NewAssetPage() {
   const router = useRouter();
   const supabase = createClient();
 
-
   // State management
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,8 +65,6 @@ export default function NewAssetPage() {
     original_value: "",
     blockchain: "ethereum",
   });
-
-
 
   const handleFileUpload = (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -101,11 +98,15 @@ export default function NewAssetPage() {
       let imageHash: string = "";
 
       if (selectedFiles.length > 0) {
-        const uploadResults = await ipfsService.uploadAssetDocuments(selectedFiles);
+        const uploadResults =
+          await ipfsService.uploadAssetDocuments(selectedFiles);
         documentHashes = uploadResults.map((result) => result.hash);
       }
       if (imageFile) {
-        const imageResult = await ipfsService.uploadFile(imageFile, { name: `${formData.name}_image`, description: "Asset image" });
+        const imageResult = await ipfsService.uploadFile(imageFile, {
+          name: `${formData.name}_image`,
+          description: "Asset image",
+        });
         imageHash = imageResult.hash;
       }
 
@@ -124,10 +125,38 @@ export default function NewAssetPage() {
 
       // Step 3: Save the request to your database for admin review
       setCurrentStep(3); // You can update the UI text to "Submitting for review..."
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       if (!user) {
         throw new Error("You must be logged in to submit an asset.");
+      }
+
+      // First ensure the user exists in our users table
+      const { data: existingUser, error: userCheckError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", user.id)
+        .single();
+
+      if (userCheckError && userCheckError.code === "PGRST116") {
+        // User doesn't exist in users table, create them
+        const { error: userCreateError } = await supabase.from("users").insert({
+          id: user.id,
+          email: user.email || "",
+          full_name: user.user_metadata?.full_name || "",
+        });
+
+        if (userCreateError) {
+          throw new Error(
+            `Failed to create user profile: ${userCreateError.message}`
+          );
+        }
+      } else if (userCheckError) {
+        throw new Error(
+          `Error checking user profile: ${userCheckError.message}`
+        );
       }
 
       const { error: dbError } = await supabase.from("assets").insert({
@@ -140,7 +169,8 @@ export default function NewAssetPage() {
         current_value: parseFloat(formData.original_value),
         blockchain: formData.blockchain,
         verification_status: "pending", // <-- THE MOST IMPORTANT CHANGE
-        documents: { // Storing as JSONB is better
+        documents: {
+          // Storing as JSONB is better
           metadata_uri: metadataResult.url,
           ipfs_hash: metadataResult.hash,
         },
@@ -150,13 +180,14 @@ export default function NewAssetPage() {
         throw dbError; // Let the catch block handle the error display
       }
 
-      setSuccess("Your asset has been successfully submitted for review. You will be notified upon approval.");
+      setSuccess(
+        "Your asset has been successfully submitted for review. You will be notified upon approval."
+      );
 
       // Redirect the user back to their assets dashboard
       setTimeout(() => {
         router.push("/dashboard/assets");
       }, 3000);
-
     } catch (error: any) {
       console.error("Asset submission error:", error);
       setError(error.message || "Failed to submit asset for review.");
@@ -232,7 +263,9 @@ export default function NewAssetPage() {
                     <p className="font-medium text-blue-900">
                       {currentStep === 1 && "Uploading documents to IPFS..."}
                       {currentStep === 2 && "Creating metadata..."}
-                      {currentStep === 3 && "Submitting for admin review..."} {/* <-- Updated text */}
+                      {currentStep === 3 &&
+                        "Submitting for admin review..."}{" "}
+                      {/* <-- Updated text */}
                     </p>
                     <p className="text-sm text-blue-700">
                       Step {currentStep} of 3 {/* <-- Updated step count */}
@@ -567,11 +600,8 @@ export default function NewAssetPage() {
                       </div>
                     </div>
 
-
-
                     {/* Submit Button */}
                     <div className="border-t border-gray-200 pt-8">
-
                       <Button
                         onClick={createAsset}
                         disabled={isLoading} // The disabled state only depends on the local isLoading
