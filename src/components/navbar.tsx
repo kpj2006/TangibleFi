@@ -158,7 +158,7 @@ export default function Navbar() {
 
                         <DropdownMenuItem asChild>
                           <Link
-                            href="#cross-chain"
+                            href="#security"
                             className="flex items-center gap-4 p-4 rounded-xl hover:bg-emerald-50 transition-all duration-300 group"
                           >
                             <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
@@ -166,10 +166,10 @@ export default function Navbar() {
                             </div>
                             <div className="flex-1">
                               <div className="font-semibold text-gray-900 text-sm">
-                                Cross-Chain Bridge
+                                Security Features
                               </div>
                               <div className="text-xs text-gray-500 mt-1">
-                                Seamless multi-blockchain compatibility
+                                Advanced security and protection
                               </div>
                             </div>
                             <div className="text-xs text-emerald-600 font-semibold">

@@ -55,9 +55,6 @@ interface BlockchainLoan {
   tokenAddress: string;
   sourceChainSelector: string;
   sourceAddress: string;
-  // Token information for display
-  tokenSymbol?: string;
-  tokenDecimals?: number;
   // Calculated fields
   outstandingBalance: number;
   monthlyPayment: number;
@@ -160,6 +157,7 @@ export default function BlockchainLoansPage() {
     
     try {
       if (!network.contracts?.diamond) {
+        console.log("🔧 DEBUG: No diamond contract configured for this network");
         toast.error("No contract deployed on this network. Please switch to a supported network.");
         setLoans([]);
         setIsLoading(false);
@@ -180,10 +178,18 @@ export default function BlockchainLoansPage() {
         provider
       );
 
+      console.log("🔧 DEBUG: Fetching user loans...", {
+        userAddress,
+        contract: network.contracts.diamond,
+        network: network.name,
+      });
+
       // Get user loan IDs
       const loanIds = await viewFacetContract.getUserLoans(userAddress);
+      console.log("🔧 DEBUG: User loan IDs:", loanIds);
 
       if (loanIds.length === 0) {
+        console.log("🔧 DEBUG: No loans found for user, using empty state");
         setLoans([]);
         setIsLoading(false);
         return;
@@ -194,32 +200,12 @@ export default function BlockchainLoansPage() {
         try {
           // Get loan details from ViewFacet
           const loanData = await viewFacetContract.getLoanById(loanId);
-
-          // Get token decimals for proper formatting
-          let tokenDecimals = 18; // Default to 18
-          let tokenSymbol = "Unknown";
           
-          try {
-            if (loanData.tokenAddress && loanData.tokenAddress !== ethers.ZeroAddress) {
-              const tokenContract = new ethers.Contract(
-                loanData.tokenAddress,
-                [
-                  'function decimals() view returns (uint8)',
-                  'function symbol() view returns (string)'
-                ],
-                provider
-              );
-              tokenDecimals = await tokenContract.decimals();
-              tokenSymbol = await tokenContract.symbol();
-              console.log(`Loan ${loanId} uses token ${tokenSymbol} with ${tokenDecimals} decimals`);
-            }
-          } catch (tokenError) {
-            console.warn(`Error fetching token info for loan ${loanId}:`, tokenError);
-          }
+          console.log("🔧 DEBUG: Loan data for ID", loanId.toString(), loanData);
 
-          // Calculate derived values using correct decimals
-          const loanAmount = Number(ethers.formatUnits(loanData.loanAmount, tokenDecimals));
-          const totalDebt = Number(ethers.formatUnits(loanData.totalDebt, tokenDecimals));
+          // Calculate derived values
+          const loanAmount = Number(ethers.formatEther(loanData.loanAmount));
+          const totalDebt = Number(ethers.formatEther(loanData.totalDebt));
           const currentTime = Math.floor(Date.now() / 1000);
           const loanStartTime = Number(loanData.startTime);
           const loanDuration = Number(loanData.duration);
@@ -277,12 +263,6 @@ export default function BlockchainLoansPage() {
             console.log("Could not fetch asset metadata:", error);
           }
 
-          // If asset name is still unknown, try to use token information
-          if (assetName === "Unknown Asset" && tokenSymbol !== "Unknown") {
-            assetName = `${tokenSymbol} Collateral Asset #${loanData.userAccountTokenId}`;
-            assetType = `${tokenSymbol} Token Collateral`;
-          }
-
           const loan: BlockchainLoan = {
             loanId: loanId.toString(),
             loanAmount,
@@ -293,16 +273,13 @@ export default function BlockchainLoansPage() {
             isActive: loanData.isActive,
             borrower: loanData.borrower,
             userAccountTokenId: loanData.userAccountTokenId.toString(),
-            bufferAmount: Number(ethers.formatUnits(loanData.bufferAmount, tokenDecimals)),
-            remainingBuffer: Number(ethers.formatUnits(loanData.remainingBuffer, tokenDecimals)),
+            bufferAmount: Number(ethers.formatEther(loanData.bufferAmount)),
+            remainingBuffer: Number(ethers.formatEther(loanData.remainingBuffer)),
             lastPaymentTime: Number(loanData.lastPaymentTime),
             monthlyPayments: loanData.monthlyPayments,
             tokenAddress: loanData.tokenAddress,
             sourceChainSelector: loanData.sourceChainSelector.toString(),
             sourceAddress: loanData.sourceAddress,
-            // Token information for display
-            tokenSymbol,
-            tokenDecimals,
             // Calculated fields
             outstandingBalance,
             monthlyPayment,
@@ -321,6 +298,7 @@ export default function BlockchainLoansPage() {
 
       const fetchedLoans = (await Promise.all(loanPromises)).filter(Boolean) as BlockchainLoan[];
       
+      console.log("🔧 DEBUG: Final fetched loans:", fetchedLoans);
       setLoans(fetchedLoans);
 
     } catch (error) {

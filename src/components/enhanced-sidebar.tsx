@@ -117,11 +117,6 @@ const Icons = {
     () => import("lucide-react").then((mod) => ({ default: mod.Smartphone })),
     { ssr: false }
   ),
-  ArrowLeftRight: dynamic(
-    () =>
-      import("lucide-react").then((mod) => ({ default: mod.ArrowLeftRight })),
-    { ssr: false }
-  ),
   User: dynamic(
     () => import("lucide-react").then((mod) => ({ default: mod.User })),
     { ssr: false }
@@ -201,15 +196,6 @@ const sidebarItems: SidebarItem[] = [
     label: "EMI Status",
     href: "/dashboard/payments",
     icon: "DollarSign",
-    category: "main",
-  },
-  {
-    id: "cross-chain",
-    label: "Cross-Chain Bridge",
-    href: "/dashboard/cross-chain",
-    icon: "ArrowLeftRight",
-    badge: "5 Chains",
-    badgeColor: "bg-purple-500",
     category: "main",
   },
 

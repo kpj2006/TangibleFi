@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTransactionData } from "../../../hooks/use-transaction-data";
+import { useBlockchainTransactions } from "../../../hooks/use-blockchain-transactions";
 import { TransactionStatsCards } from "../../../components/transactions/TransactionStatsCards";
 import { TransactionTable } from "../../../components/transactions/TransactionTable";
 import { Button } from "../../../components/ui/button";
@@ -22,11 +22,13 @@ import {
   Activity,
   TrendingUp,
   Filter,
+  Wallet,
+  Globe,
 } from "lucide-react";
 
 export default function TransactionsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const transactionData = useTransactionData();
+  const transactionData = useBlockchainTransactions();
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -66,7 +68,7 @@ export default function TransactionsPage() {
         "Created At",
         "Updated At",
       ],
-      ...transactionData.filteredTransactions.map((tx) => [
+      ...transactionData.transactions.map((tx: any) => [
         tx.id,
         tx.type,
         tx.status,
@@ -115,7 +117,7 @@ export default function TransactionsPage() {
             Transaction History
           </h1>
           <p className="text-gray-600 mt-2">
-            Track all your asset transactions and blockchain activities
+            Track all your blockchain transactions from smart contracts
           </p>
           {transactionData.last_updated && (
             <div className="flex items-center gap-2 mt-1">
@@ -158,47 +160,61 @@ export default function TransactionsPage() {
       {/* Error State */}
       {transactionData.error && (
         <Card className="border-red-200 bg-red-50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-red-800">
-              <AlertCircle className="h-4 w-4" />
-              <span className="font-medium">
-                Error loading transaction data
-              </span>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <div>
+                <h3 className="font-semibold text-red-900">
+                  Blockchain Connection Error
+                </h3>
+                <p className="text-sm text-red-700 mt-1">
+                  {transactionData.error}
+                </p>
+                <div className="flex items-center gap-4 mt-3">
+                  <Button
+                    onClick={handleRefresh}
+                    size="sm"
+                    variant="outline"
+                    className="border-red-300 text-red-700 hover:bg-red-100"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Retry Connection
+                  </Button>
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="border-red-300 text-red-700 hover:bg-red-100"
+                  >
+                    <a href="/wallet-connect">
+                      <Wallet className="h-4 w-4 mr-2" />
+                      Connect Wallet
+                    </a>
+                  </Button>
+                </div>
+              </div>
             </div>
-            <p className="text-red-600 text-sm mt-1">{transactionData.error}</p>
           </CardContent>
         </Card>
       )}
 
-      {/* Real-time Status Indicator */}
-      <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
-        <CardContent className="p-4">
+      {/* Blockchain Connection Status */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <Zap className="h-4 w-4 text-green-600" />
-                <span className="font-medium text-gray-900">
-                  Live Transaction Tracking
-                </span>
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                <Globe className="h-5 w-5 text-blue-600" />
+                <span className="font-semibold text-blue-900">Live Blockchain Tracking</span>
               </div>
-              <div className="text-sm text-gray-600">
-                Real-time blockchain monitoring • Auto-sync with database
-              </div>
+              <Badge variant="outline" className="text-blue-700 border-blue-300">
+                Real-time blockchain monitoring • Auto-sync with smart contracts
+              </Badge>
             </div>
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-1">
-                <Activity className="h-4 w-4 text-blue-500" />
-                <span className="text-blue-600 font-medium">
-                  {transactionData.stats.total_transactions} Transactions
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <TrendingUp className="h-4 w-4 text-purple-500" />
-                <span className="text-purple-600 font-medium">
-                  {formatCurrency(transactionData.stats.total_volume)} Volume
-                </span>
-              </div>
+            <div className="flex items-center gap-4 text-sm text-blue-700">
+              <span>{transactionData.transactions.length} Transactions</span>
+              <span>{formatCurrency(transactionData.stats.total_volume)} Volume</span>
             </div>
           </div>
         </CardContent>
@@ -269,7 +285,7 @@ export default function TransactionsPage() {
 
       {/* Transaction Table */}
       <TransactionTable
-        transactions={transactionData.filteredTransactions}
+        transactions={transactionData.transactions}
         filters={transactionData.filters}
         loading={transactionData.loading}
         onFiltersChange={transactionData.updateFilters}
@@ -289,7 +305,7 @@ export default function TransactionsPage() {
             <div className="space-y-3">
               {Object.entries(
                 transactionData.transactions.reduce(
-                  (acc, tx) => {
+                  (acc: Record<string, number>, tx: any) => {
                     acc[tx.type] = (acc[tx.type] || 0) + 1;
                     return acc;
                   },
@@ -304,11 +320,11 @@ export default function TransactionsPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">{count}</span>
+                    <span className="text-sm text-gray-600">{count as number}</span>
                     <span className="text-xs text-gray-400">
                       (
                       {(
-                        (count / transactionData.transactions.length) *
+                        ((count as number) / transactionData.transactions.length) *
                         100
                       ).toFixed(1)}
                       %)
@@ -333,7 +349,7 @@ export default function TransactionsPage() {
                 <span className="text-sm text-gray-600">Last 24 Hours</span>
                 <span className="font-semibold">
                   {
-                    transactionData.transactions.filter((tx) => {
+                    transactionData.transactions.filter((tx: any) => {
                       const txDate = new Date(tx.created_at);
                       const yesterday = new Date();
                       yesterday.setDate(yesterday.getDate() - 1);
@@ -347,7 +363,7 @@ export default function TransactionsPage() {
                 <span className="text-sm text-gray-600">Last 7 Days</span>
                 <span className="font-semibold">
                   {
-                    transactionData.transactions.filter((tx) => {
+                    transactionData.transactions.filter((tx: any) => {
                       const txDate = new Date(tx.created_at);
                       const weekAgo = new Date();
                       weekAgo.setDate(weekAgo.getDate() - 7);

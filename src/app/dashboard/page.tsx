@@ -58,7 +58,6 @@ import {
   ArrowUpDown,
   ShieldCheck,
   Smartphone,
-  ArrowLeftRight,
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -90,16 +89,6 @@ interface Loan {
   loan_status: string;
   blockchain: string;
   created_at: string;
-}
-
-interface CrossChainPosition {
-  id: string;
-  blockchain: string;
-  asset_symbol: string;
-  balance: number;
-  usd_value: number;
-  position_type: string;
-  updated_at: string;
 }
 
 function getStatusBadge(status: string) {
@@ -589,12 +578,6 @@ export default function Dashboard() {
                 Apply Loan
               </Button>
             </Link>
-            <Link href="/dashboard/cross-chain">
-              <Button className="w-full bg-white/20 hover:bg-white/30 border-white/30 text-white">
-                <ArrowLeftRight className="h-4 w-4 mr-2" />
-                Cross-Chain
-              </Button>
-            </Link>
             <Link href="/dashboard/market">
               <Button className="w-full bg-white/20 hover:bg-white/30 border-white/30 text-white">
                 <TrendingUp className="h-4 w-4 mr-2" />
@@ -1003,9 +986,9 @@ export default function Dashboard() {
                 className="w-full justify-start"
                 variant="outline"
               >
-                <Link href="/dashboard/cross-chain">
-                  <Network className="h-4 w-4 mr-2" />
-                  Cross-Chain Bridge
+                <Link href="/dashboard/market">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Market Analysis
                 </Link>
               </Button>
             </div>

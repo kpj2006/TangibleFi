@@ -6,9 +6,9 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
-  Transaction,
+  BlockchainTransaction,
   TransactionFilters,
-} from "../../hooks/use-transaction-data";
+} from "../../hooks/use-blockchain-transactions";
 import {
   Search,
   Filter,
@@ -37,7 +37,7 @@ import {
 } from "../ui/select";
 
 interface TransactionTableProps {
-  transactions: Transaction[];
+  transactions: BlockchainTransaction[];
   filters: TransactionFilters;
   loading?: boolean;
   onFiltersChange: (filters: Partial<TransactionFilters>) => void;
@@ -98,9 +98,11 @@ export function TransactionTable({
 
   const getTypeIcon = (type: string) => {
     const iconMap: Record<string, React.ComponentType<any>> = {
-      tokenization: Building,
-      loan: DollarSign,
-      repayment: ArrowDown,
+      loan_creation: DollarSign,
+      payment: ArrowDown,
+      loan_repayment: TrendingUp,
+      asset_tokenization: Building,
+      nft_mint: Wallet,
       transfer: ArrowUpDown,
       withdrawal: ArrowUp,
       deposit: ArrowDown,
@@ -111,9 +113,11 @@ export function TransactionTable({
 
   const getTypeColor = (type: string) => {
     const colorMap: Record<string, string> = {
-      tokenization: "text-blue-600 bg-blue-100",
-      loan: "text-purple-600 bg-purple-100",
-      repayment: "text-green-600 bg-green-100",
+      loan_creation: "text-purple-600 bg-purple-100",
+      payment: "text-orange-600 bg-orange-100",
+      loan_repayment: "text-green-600 bg-green-100",
+      asset_tokenization: "text-blue-600 bg-blue-100",
+      nft_mint: "text-pink-600 bg-pink-100",
       transfer: "text-orange-600 bg-orange-100",
       withdrawal: "text-red-600 bg-red-100",
       deposit: "text-emerald-600 bg-emerald-100",
@@ -279,13 +283,12 @@ export function TransactionTable({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="tokenization">Tokenization</SelectItem>
-              <SelectItem value="loan">Loan</SelectItem>
-              <SelectItem value="repayment">Repayment</SelectItem>
+              <SelectItem value="loan_creation">Loan Creation</SelectItem>
+              <SelectItem value="payment">Payment</SelectItem>
+              <SelectItem value="loan_repayment">Loan Repayment</SelectItem>
+              <SelectItem value="asset_tokenization">Asset Tokenization</SelectItem>
+              <SelectItem value="nft_mint">NFT Mint</SelectItem>
               <SelectItem value="transfer">Transfer</SelectItem>
-              <SelectItem value="withdrawal">Withdrawal</SelectItem>
-              <SelectItem value="deposit">Deposit</SelectItem>
-              <SelectItem value="trade">Trade</SelectItem>
             </SelectContent>
           </Select>
           <Select
@@ -373,6 +376,12 @@ export function TransactionTable({
                             <span>{transaction.asset_name}</span>
                           </>
                         )}
+                        {transaction.type === "nft_mint" && transaction.token_id !== undefined && (
+                          <>
+                            <span>•</span>
+                            <span>Token #{transaction.token_id}</span>
+                          </>
+                        )}
                         {transaction.blockchain && (
                           <>
                             <span>•</span>
@@ -388,10 +397,13 @@ export function TransactionTable({
                   <div className="flex items-center gap-6">
                     <div className="text-right">
                       <div className="font-semibold text-gray-900">
-                        {formatCurrency(
-                          transaction.amount,
-                          transaction.currency
-                        )}
+                        {transaction.type === "nft_mint" && transaction.token_id !== undefined
+                          ? `Token #${transaction.token_id}`
+                          : formatCurrency(
+                              transaction.amount,
+                              transaction.currency
+                            )
+                        }
                       </div>
                       <div className="text-sm text-gray-500">
                         Fee: {formatCurrency(transaction.fee)}
@@ -399,14 +411,14 @@ export function TransactionTable({
                     </div>
 
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {transaction.transaction_hash && (
+                      {transaction.hash && (
                         <>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
                             onClick={() =>
-                              copyToClipboard(transaction.transaction_hash!)
+                              copyToClipboard(transaction.hash!)
                             }
                             title="Copy transaction hash"
                           >
@@ -418,7 +430,7 @@ export function TransactionTable({
                             className="h-8 w-8 p-0"
                             onClick={() =>
                               openBlockchainExplorer(
-                                transaction.transaction_hash!,
+                                transaction.hash!,
                                 transaction.blockchain
                               )
                             }

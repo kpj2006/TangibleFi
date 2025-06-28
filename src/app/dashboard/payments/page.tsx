@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "../../../../supabase/client";
+import { ethers } from "ethers";
 import {
   Card,
   CardContent,
@@ -37,97 +37,279 @@ import {
   Target,
   Activity,
   ArrowUpRight,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import { User } from "@supabase/supabase-js";
 import { SubmitButton } from "@/components/submit-button";
+import {
+  SUPPORTED_NETWORKS,
+  CONTRACT_ABIS,
+  POPULAR_TOKENS,
+  getNetworkConfig,
+} from "@/lib/web3/blockchain-config";
 
-interface Payment {
-  id: string;
-  loan_id: string;
-  amount: number;
-  currency: string;
-  crypto_currency?: string;
-  exchange_rate?: number;
-  transaction_hash?: string;
-  blockchain?: string;
-  payment_status: "pending" | "completed" | "failed";
-  payment_date: string;
-  created_at: string;
-  loans?: {
-    id: string;
-    loan_amount: number;
-    outstanding_balance: number;
-    monthly_payment: number;
-    assets: {
-      name: string;
-      asset_type: string;
-    };
-  };
+// On-chain loan data structures
+interface LoanData {
+  loanId: number;
+  borrower: string;
+  userAccountTokenId: number;
+  loanAmount: number;
+  totalDebt: number;
+  tokenAddress: string;
+  duration: number;
+  interestRate: number;
+  startTime: number;
+  lastPaymentTime: number;
+  remainingBuffer: number;
+  isActive: boolean;
+  monthlyPayments: boolean[];
+  // Additional token info for proper display
+  tokenSymbol?: string;
+  tokenDecimals?: number;
 }
 
-interface Loan {
-  id: string;
-  loan_amount: number;
-  outstanding_balance: number;
-  monthly_payment: number;
-  next_payment_date: string;
-  loan_status: string;
-  assets: {
-    id: string;
-    name: string;
-    asset_type: string;
-  };
+interface PaymentTransaction {
+  hash: string;
+  loanId: number;
+  amount: string;
+  token: string;
+  timestamp: number;
+  status: 'pending' | 'confirmed' | 'failed';
+  blockNumber?: number;
+  gasUsed?: string;
 }
 
-// Get real payments data from database with optimized query
-const getPayments = async (
-  userId: string,
-  supabase: any
-): Promise<Payment[]> => {
-  const { data: payments } = await supabase
-    .from("payments")
-    .select(
-      `
-      id,
-      loan_id,
-      amount,
-      currency,
-      crypto_currency,
-      exchange_rate,
-      transaction_hash,
-      blockchain,
-      payment_status,
-      payment_date,
-      created_at,
-      loans!payments_loan_id_fkey (
-        id,
-        loan_amount,
-        outstanding_balance,
-        monthly_payment,
-        assets!loans_asset_id_fkey (
-          name,
-          asset_type
-        )
-      )
-    `
-    )
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(50); // Limit results for better performance
+interface NetworkInfo {
+  chainId: number;
+  name: string;
+  symbol: string;
+  isConnected: boolean;
+}
 
-  return payments || [];
+interface TokenInfo {
+  address: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  balance?: string;
+  rate?: number; // Exchange rate to USD
+}
+
+// Blockchain data fetching functions
+const getProvider = () => {
+  if (typeof window !== 'undefined' && window.ethereum) {
+    return new ethers.BrowserProvider(window.ethereum);
+  }
+  return null;
+};
+
+const getContract = (contractAddress: string, abi: any, provider: any) => {
+  return new ethers.Contract(contractAddress, abi, provider);
+};
+
+const fetchUserLoans = async (
+  userAddress: string,
+  provider: ethers.BrowserProvider
+): Promise<LoanData[]> => {
+  try {
+    const signer = await provider.getSigner();
+    const network = await provider.getNetwork();
+    const networkConfig = getNetworkConfig(Number(network.chainId));
+    
+    if (!networkConfig?.contracts?.diamond) {
+      console.warn('No diamond contract address for network:', network.chainId);
+      return [];
+    }
+
+    const viewFacet = getContract(
+      networkConfig.contracts.diamond,
+      CONTRACT_ABIS.ViewFacet,
+      signer
+    );
+
+    // Get user loan IDs
+    const loanIds = await viewFacet.getUserLoans(userAddress);
+    const loans: LoanData[] = [];
+
+    for (const loanId of loanIds) {
+      try {
+        const loanData = await viewFacet.getLoanById(Number(loanId));
+        
+        // Get token decimals for proper formatting
+        let tokenDecimals = 18; // Default to 18
+        let tokenSymbol = "Unknown";
+        
+        try {
+          if (loanData.tokenAddress && loanData.tokenAddress !== ethers.ZeroAddress) {
+            const tokenContract = new ethers.Contract(
+              loanData.tokenAddress,
+              [
+                'function decimals() view returns (uint8)',
+                'function symbol() view returns (string)'
+              ],
+              provider
+            );
+            tokenDecimals = await tokenContract.decimals();
+            tokenSymbol = await tokenContract.symbol();
+            console.log(`Found token ${tokenSymbol} with ${tokenDecimals} decimals at ${loanData.tokenAddress}`);
+          }
+        } catch (tokenError) {
+          console.warn(`Error fetching token info for ${loanData.tokenAddress}:`, tokenError);
+          // Keep defaults
+        }
+
+        const loanAmountFormatted = Number(ethers.formatUnits(loanData.loanAmount, tokenDecimals));
+        const totalDebtFormatted = Number(ethers.formatUnits(loanData.totalDebt, tokenDecimals));
+        const remainingBufferFormatted = Number(ethers.formatUnits(loanData.remainingBuffer, tokenDecimals));
+
+        console.log(`Loan ${loanId} data:`, {
+          loanAmount: loanAmountFormatted,
+          totalDebt: totalDebtFormatted,
+          remainingBuffer: remainingBufferFormatted,
+          tokenSymbol,
+          tokenDecimals,
+          rawLoanAmount: loanData.loanAmount.toString(),
+          rawTotalDebt: loanData.totalDebt.toString()
+        });
+
+        loans.push({
+          loanId: Number(loanData.loanId),
+          borrower: loanData.borrower,
+          userAccountTokenId: Number(loanData.userAccountTokenId),
+          loanAmount: loanAmountFormatted,
+          totalDebt: totalDebtFormatted,
+          tokenAddress: loanData.tokenAddress,
+          duration: Number(loanData.duration),
+          interestRate: Number(loanData.interestRate),
+          startTime: Number(loanData.startTime),
+          lastPaymentTime: Number(loanData.lastPaymentTime),
+          remainingBuffer: remainingBufferFormatted,
+          isActive: loanData.isActive,
+          monthlyPayments: loanData.monthlyPayments,
+          // Add token info for display
+          tokenSymbol: tokenSymbol,
+          tokenDecimals: tokenDecimals,
+        });
+      } catch (error) {
+        console.error(`Error fetching loan ${loanId}:`, error);
+      }
+    }
+
+    return loans;
+  } catch (error) {
+    console.error('Error fetching user loans:', error);
+    return [];
+  }
+};
+
+const fetchPaymentHistory = async (
+  userAddress: string,
+  provider: ethers.BrowserProvider,
+  loans: LoanData[]
+): Promise<PaymentTransaction[]> => {
+  try {
+    const network = await provider.getNetwork();
+    const networkConfig = getNetworkConfig(Number(network.chainId));
+    
+    if (!networkConfig?.contracts?.diamond) {
+      return [];
+    }
+
+    // Get recent payment events from the blockchain
+    const contract = getContract(
+      networkConfig.contracts.diamond,
+      CONTRACT_ABIS.AutomationLoan,
+      provider
+    );
+
+    const currentBlock = await provider.getBlockNumber();
+    const fromBlock = Math.max(0, currentBlock - 10000); // Last ~10k blocks
+
+    try {
+      const filter = contract.filters.EMIPaid();
+      const events = await contract.queryFilter(filter, fromBlock, currentBlock);
+      
+      const payments: PaymentTransaction[] = [];
+      
+      for (const event of events) {
+        // Type guard to check if event is EventLog
+        if ('args' in event && event.args) {
+          const block = await provider.getBlock(event.blockNumber);
+          const loanId = Number(event.args.loanId);
+          // Find the loan to get token info
+          const loan = loans.find(l => l.loanId === loanId);
+          let tokenSymbol = 'Unknown';
+          let tokenDecimals = 18;
+          if (loan) {
+            tokenSymbol = loan.tokenSymbol || 'Unknown';
+            tokenDecimals = loan.tokenDecimals || 18;
+          }
+          payments.push({
+            hash: event.transactionHash,
+            loanId: loanId,
+            amount: ethers.formatUnits(event.args.amount, tokenDecimals),
+            token: tokenSymbol,
+            timestamp: block ? block.timestamp : 0,
+            status: 'confirmed',
+            blockNumber: event.blockNumber,
+            gasUsed: '0',
+          });
+        }
+      }
+
+      return payments.sort((a, b) => b.timestamp - a.timestamp);
+    } catch (error) {
+      console.error('Error fetching payment events:', error);
+      return [];
+    }
+  } catch (error) {
+    console.error('Error in fetchPaymentHistory:', error);
+    return [];
+  }
+};
+
+const getAvailableTokens = (chainId: number): TokenInfo[] => {
+  const networkName = Object.keys(SUPPORTED_NETWORKS).find(
+    name => SUPPORTED_NETWORKS[name].chainId === chainId
+  );
+  
+  if (!networkName || !POPULAR_TOKENS[networkName]) {
+    return [];
+  }
+  
+  return POPULAR_TOKENS[networkName];
+};
+
+const fetchTokenPrices = async (tokens: TokenInfo[]): Promise<Record<string, number>> => {
+  // For demo purposes, using mock exchange rates
+  // In production, this would fetch from a price oracle or API
+  const mockRates: Record<string, number> = {
+    'USDC': 1.0,
+    'USDT': 1.0,
+    'DAI': 1.0,
+    'ETH': 0.0004, // 1 USD = 0.0004 ETH (approximate)
+    'BTC': 0.000023, // 1 USD = 0.000023 BTC (approximate)
+    'MATIC': 1.25, // 1 USD = 1.25 MATIC (approximate)
+  };
+  
+  const rates: Record<string, number> = {};
+  tokens.forEach(token => {
+    rates[token.symbol] = mockRates[token.symbol] || 1.0;
+  });
+  
+  return rates;
 };
 
 function getStatusBadge(status: string) {
   const colors = {
-    completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    confirmed: "bg-emerald-50 text-emerald-700 border-emerald-200",
     pending: "bg-yellow-50 text-yellow-700 border-yellow-200",
     failed: "bg-red-50 text-red-700 border-red-200",
   };
 
   const icons = {
-    completed: CheckCircle,
+    confirmed: CheckCircle,
     pending: Clock,
     failed: AlertTriangle,
   };
@@ -145,225 +327,342 @@ function getStatusBadge(status: string) {
   );
 }
 
-const cryptoCurrencies = [
-  { symbol: "USDC", name: "USD Coin", rate: 1.0 },
-  { symbol: "USDT", name: "Tether", rate: 1.0 },
-  { symbol: "ETH", name: "Ethereum", rate: 0.0004 },
-  { symbol: "BTC", name: "Bitcoin", rate: 0.000023 },
-  { symbol: "MATIC", name: "Polygon", rate: 1.25 },
-];
-
 export default function PaymentsPage() {
   const router = useRouter();
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [loans, setLoans] = useState<Loan[]>([]);
+  const [payments, setPayments] = useState<PaymentTransaction[]>([]);
+  const [loans, setLoans] = useState<LoanData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
+  const [userAddress, setUserAddress] = useState<string>("");
   const [selectedLoanId, setSelectedLoanId] = useState<string>("");
+  const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
+  const [availableTokens, setAvailableTokens] = useState<TokenInfo[]>([]);
+  const [tokenRates, setTokenRates] = useState<Record<string, number>>({});
+  const [selectedToken, setSelectedToken] = useState<string>("");
+  const [selectedNetwork, setSelectedNetwork] = useState<string>("");
+  const [paymentAmount, setPaymentAmount] = useState<string>("");
+  const [isWalletConnected, setIsWalletConnected] = useState(false);
 
   useEffect(() => {
-    const loadData = async () => {
-      const supabase = createClient();
+    const loadBlockchainData = async () => {
+      setLoading(true);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const provider = getProvider();
+        if (!provider) {
+          toast({
+            title: "Wallet Not Connected",
+            description: "Please connect your MetaMask wallet to view payments.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
 
-      if (!user) {
-        router.push("/sign-in");
-        return;
-      }
+        // Get user address
+        const signer = await provider.getSigner();
+        const address = await signer.getAddress();
+        setUserAddress(address);
+        setIsWalletConnected(true);
 
-      setUser(user);
+        // Get network info
+        const network = await provider.getNetwork();
+        const networkConfig = getNetworkConfig(Number(network.chainId));
+        
+        if (networkConfig) {
+          setNetworkInfo({
+            chainId: Number(network.chainId),
+            name: networkConfig.name,
+            symbol: networkConfig.symbol,
+            isConnected: true,
+          });
 
-      // Load real payments data
-      const userPayments = await getPayments(user.id, supabase);
-      setPayments(userPayments);
+          // Get available tokens for this network
+          const tokens = getAvailableTokens(Number(network.chainId));
+          setAvailableTokens(tokens);
 
-      // Load user's loans for payment selection (optimized query)
-      const { data: userLoans, error: loansLoadError } = await supabase
-        .from("loans")
-        .select(
-          `
-          id,
-          loan_amount,
-          outstanding_balance,
-          monthly_payment,
-          next_payment_date,
-          loan_status,
-          assets!loans_asset_id_fkey (
-            id,
-            name,
-            asset_type
-          )
-        `
-        )
-        .eq("user_id", user.id)
-        .in("loan_status", ["active", "completed"])
-        .order("created_at", { ascending: false })
-        .limit(20); // Limit for better performance
+          // Fetch token rates
+          const rates = await fetchTokenPrices(tokens);
+          setTokenRates(rates);
 
-      if (loansLoadError) {
-        console.error("Error loading loans:", loansLoadError);
-      }
+          // Set default selections
+          if (tokens.length > 0) {
+            setSelectedToken(tokens[0].symbol);
+          }
+          setSelectedNetwork(networkConfig.name);
+        }
 
-      setLoans(userLoans || []);
+        // Load user loans from blockchain
+        const userLoans = await fetchUserLoans(address, provider);
+        setLoans(userLoans);
 
-      // Check if there's a specific loan ID in the URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const loanParam = urlParams.get("loan");
-      if (loanParam && userLoans?.find((loan) => loan.id === loanParam)) {
-        setSelectedLoanId(loanParam);
+        // Load payment history from blockchain (pass loans for token info)
+        const userPayments = await fetchPaymentHistory(address, provider, userLoans);
+        setPayments(userPayments);
+
+        // Check if there's a specific loan ID in the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const loanParam = urlParams.get("loan");
+        if (loanParam && userLoans?.find((loan) => loan.loanId.toString() === loanParam)) {
+          setSelectedLoanId(loanParam);
+        }
+
+      } catch (error) {
+        console.error("Error loading blockchain data:", error);
+        toast({
+          title: "Error Loading Data",
+          description: "Failed to load blockchain data. Please check your wallet connection.",
+          variant: "destructive",
+        });
       }
 
       setLoading(false);
     };
 
-    loadData();
+    loadBlockchainData();
   }, [router]);
 
   const handlePayment = async (formData: FormData) => {
-    if (!user) return;
+    if (!userAddress || !isWalletConnected) {
+      toast({
+        title: "Wallet Not Connected",
+        description: "Please connect your wallet to make a payment.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const supabase = createClient();
     const loanId = formData.get("loan_id") as string;
     const amount = parseFloat(formData.get("amount") as string);
+    const paymentType = formData.get("payment_type") as string;
     const cryptoCurrency = formData.get("crypto_currency") as string;
-    const blockchain = formData.get("blockchain") as string;
 
-    // Find the selected crypto rate
-    const selectedCrypto = cryptoCurrencies.find(
-      (c) => c.symbol === cryptoCurrency
-    );
-    const exchangeRate = selectedCrypto?.rate || 1.0;
-
-    // Generate a mock transaction hash (in real implementation, this would come from blockchain)
-    const transactionHash = "0x" + Math.random().toString(16).substring(2, 66);
+    if (!loanId || !amount || !cryptoCurrency) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      // Insert payment record
-      const { data: paymentData, error: paymentError } = await supabase
-        .from("payments")
-        .insert({
-          user_id: user.id,
-          loan_id: loanId,
-          amount: amount,
-          currency: "USD",
-          crypto_currency: cryptoCurrency,
-          exchange_rate: exchangeRate,
-          transaction_hash: transactionHash,
-          blockchain: blockchain,
-          payment_status: "completed",
-          payment_date: new Date().toISOString(),
-        })
-        .select();
-
-      if (paymentError) {
-        console.error("Payment error:", paymentError);
-        console.error("Payment details:", {
-          userId: user.id,
-          loanId,
-          amount,
-          cryptoCurrency,
-          blockchain,
-        });
-        toast({
-          title: "Payment Failed",
-          description: "There was an error processing your payment.",
-          variant: "destructive",
-        });
-        return;
+      const provider = getProvider();
+      if (!provider) {
+        throw new Error("No wallet provider found");
       }
 
-      // Update loan outstanding balance
-      const selectedLoan = loans.find((loan) => loan.id === loanId);
+      const signer = await provider.getSigner();
+      const network = await provider.getNetwork();
+      const networkConfig = getNetworkConfig(Number(network.chainId));
+      
+      if (!networkConfig?.contracts?.diamond) {
+        throw new Error("No contract address found for this network");
+      }
+
+      const automationLoanContract = getContract(
+        networkConfig.contracts.diamond,
+        CONTRACT_ABIS.AutomationLoan,
+        signer
+      );
+
+      // Get the selected token details
+      const selectedTokenInfo = availableTokens.find(t => t.symbol === cryptoCurrency);
+      if (!selectedTokenInfo) {
+        throw new Error("Selected token not found");
+      }
+
+      // Calculate payment amount in token units
+      const tokenAmount = ethers.parseUnits(
+        (amount * (tokenRates[cryptoCurrency] || 1)).toString(),
+        selectedTokenInfo.decimals
+      );
+
+      // Pre-check: Find the selected loan and validate
+      const selectedLoan = loans.find(l => l.loanId.toString() === loanId);
       if (!selectedLoan) {
-        console.error("Selected loan not found:", loanId);
         toast({
-          title: "Payment Failed",
-          description: "Selected loan not found.",
+          title: "Invalid Loan",
+          description: "Selected loan not found or not active.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!selectedLoan.isActive) {
+        toast({
+          title: "Inactive Loan",
+          description: "This loan is not active.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (amount <= 0 || isNaN(amount)) {
+        toast({
+          title: "Invalid Amount",
+          description: "Payment amount must be greater than zero.",
           variant: "destructive",
         });
         return;
       }
 
-      const newBalance = Math.max(0, selectedLoan.outstanding_balance - amount);
-      const newStatus = newBalance === 0 ? "completed" : "active";
-
-      // Calculate next payment date (30 days from now)
-      const nextPaymentDate = new Date();
-      nextPaymentDate.setDate(nextPaymentDate.getDate() + 30);
-
-      const { data: loanUpdateData, error: loanError } = await supabase
-        .from("loans")
-        .update({
-          outstanding_balance: newBalance,
-          loan_status: newStatus,
-          next_payment_date:
-            newBalance > 0 ? nextPaymentDate.toISOString().split("T")[0] : null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", loanId)
-        .eq("user_id", user.id)
-        .select();
-
-      if (loanError) {
-        console.error("Loan update error:", loanError);
-        console.error("Loan update details:", {
-          loanId,
-          userId: user.id,
-          newBalance,
-          newStatus,
-          nextPaymentDate:
-            newBalance > 0 ? nextPaymentDate.toISOString().split("T")[0] : null,
+      // 1. Check allowance
+      const tokenContract = new ethers.Contract(
+        selectedTokenInfo.address,
+        [
+          'function allowance(address owner, address spender) view returns (uint256)',
+          'function approve(address spender, uint256 amount) returns (bool)'
+        ],
+        signer
+      );
+      const allowance = await tokenContract.allowance(userAddress, networkConfig.contracts.diamond);
+      if (allowance < tokenAmount) {
+        toast({
+          title: "Approval Required",
+          description: `Approving ${cryptoCurrency} for payment...`,
+        });
+        const approveTx = await tokenContract.approve(networkConfig.contracts.diamond, tokenAmount);
+        await approveTx.wait();
+        toast({
+          title: "Token Approved",
+          description: `${cryptoCurrency} approved for payment. Proceeding...`,
         });
       }
 
-      toast({
-        title: "Payment Processed Successfully!",
-        description: `Payment of $${amount.toLocaleString()} has been processed using ${cryptoCurrency}.`,
+      // Debug log all parameters
+      console.log('Submitting payment:', {
+        loanId,
+        amount,
+        paymentType,
+        cryptoCurrency,
+        selectedLoan,
+        selectedTokenInfo,
+        tokenAmount: tokenAmount.toString(),
+        userAddress
       });
 
-      // Refresh data
-      const userPayments = await getPayments(user.id, supabase);
-      setPayments(userPayments);
+      toast({
+        title: "Processing Payment",
+        description: "Please confirm the transaction in your wallet...",
+      });
 
-      // Reload loans to get updated balances (optimized query)
-      const { data: updatedLoans, error: loansQueryError } = await supabase
-        .from("loans")
-        .select(
-          `
-          id,
-          loan_amount,
-          outstanding_balance,
-          monthly_payment,
-          next_payment_date,
-          loan_status,
-          assets!loans_asset_id_fkey (
-            id,
-            name,
-            asset_type
-          )
-        `
-        )
-        .eq("user_id", user.id)
-        .in("loan_status", ["active", "completed"])
-        .order("created_at", { ascending: false })
-        .limit(20);
-
-      if (loansQueryError) {
-        console.error("Error reloading loans:", loansQueryError);
+      let tx;
+      if (paymentType === "full") {
+        // Full loan repayment
+        tx = await automationLoanContract.repayLoanFull(parseInt(loanId));
+      } else {
+        // Monthly payment
+        tx = await automationLoanContract.makeMonthlyPayment(parseInt(loanId));
       }
 
-      setLoans(updatedLoans || []);
-    } catch (error) {
+      toast({
+        title: "Transaction Submitted",
+        description: "Waiting for blockchain confirmation...",
+      });
+
+      const receipt = await tx.wait();
+
+      toast({
+        title: "Payment Successful!",
+        description: `Payment of $${amount.toLocaleString()} has been processed successfully.`,
+      });
+
+      // Refresh data after successful payment
+      const userLoans = await fetchUserLoans(userAddress, provider);
+      setLoans(userLoans);
+
+      const userPayments = await fetchPaymentHistory(userAddress, provider, userLoans);
+      setPayments(userPayments);
+
+    } catch (error: any) {
       console.error("Payment processing error:", error);
+      
+      let errorMessage = "There was an error processing your payment.";
+      if (error.message?.includes("user rejected")) {
+        errorMessage = "Transaction was cancelled by user.";
+      } else if (error.message?.includes("insufficient funds")) {
+        errorMessage = "Insufficient funds for this transaction.";
+      } else if (error.message?.includes("PaymentNotDue")) {
+        errorMessage = "Payment is not due yet for this loan.";
+      } else if (error.message?.includes("LoanNotActive")) {
+        errorMessage = "This loan is not active.";
+      } else if (error.message?.includes("Unauthorized")) {
+        errorMessage = "You are not authorized to make payments for this loan.";
+      }
+
       toast({
         title: "Payment Failed",
-        description: "There was an unexpected error processing your payment.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
+  };
+
+  // Connect wallet function
+  const connectWallet = async () => {
+    try {
+      if (typeof window.ethereum !== 'undefined') {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const provider = getProvider();
+        if (provider) {
+          const signer = await provider.getSigner();
+          const address = await signer.getAddress();
+          setUserAddress(address);
+          setIsWalletConnected(true);
+          
+          // Reload data after connecting
+          const userLoans = await fetchUserLoans(address, provider);
+          setLoans(userLoans);
+          const userPayments = await fetchPaymentHistory(address, provider, userLoans);
+          setPayments(userPayments);
+          
+          toast({
+            title: "Wallet Connected",
+            description: `Connected to ${address.slice(0, 6)}...${address.slice(-4)}`,
+          });
+        }
+      } else {
+        toast({
+          title: "MetaMask Not Found",
+          description: "Please install MetaMask to connect your wallet.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error connecting wallet:", error);
+      toast({
+        title: "Connection Failed",
+        description: "Failed to connect wallet. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Refresh data function
+  const refreshData = async () => {
+    if (!userAddress || !isWalletConnected) return;
+    
+    setLoading(true);
+    try {
+      const provider = getProvider();
+      if (provider) {
+        const userLoans = await fetchUserLoans(userAddress, provider);
+        setLoans(userLoans);
+        const userPayments = await fetchPaymentHistory(userAddress, provider, userLoans);
+        setPayments(userPayments);
+        
+        toast({
+          title: "Data Refreshed",
+          description: "Blockchain data has been updated.",
+        });
+      }
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh data. Please try again.",
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
   };
 
   if (loading) {
@@ -372,24 +671,56 @@ export default function PaymentsPage() {
         <div className="space-y-8">
           <div className="text-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading payments...</p>
+            <p className="mt-4 text-gray-600">Loading blockchain data...</p>
           </div>
         </div>
       </main>
     );
   }
 
-  const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
+  // Calculate summaries from blockchain data
+  const totalPaid = payments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
   const completedPayments = payments.filter(
-    (payment) => payment.payment_status === "completed"
+    (payment) => payment.status === "confirmed"
   ).length;
   const pendingPayments = payments.filter(
-    (payment) => payment.payment_status === "pending"
+    (payment) => payment.status === "pending"
   ).length;
-  const totalMonthlyDue = loans.reduce(
-    (sum, loan) => sum + loan.monthly_payment,
-    0
-  );
+
+  // Calculate total monthly obligations from active loans
+  const totalMonthlyDue = loans.reduce((sum, loan) => {
+    if (loan.isActive && loan.monthlyPayments.length > 0) {
+      return sum + (loan.totalDebt / loan.monthlyPayments.length);
+    }
+    return sum;
+  }, 0);
+
+  // Calculate payment summary for the form
+  const calculatePaymentSummary = () => {
+    if (!paymentAmount || !selectedToken || !tokenRates[selectedToken]) {
+      return {
+        amountUSD: 0,
+        exchangeRate: 1,
+        networkFee: 0,
+        totalRequired: 0,
+      };
+    }
+
+    const amountUSD = parseFloat(paymentAmount);
+    const exchangeRate = tokenRates[selectedToken];
+    const networkFee = 2.50; // Approximate network fee in USD
+    const tokenAmount = amountUSD * exchangeRate;
+    const totalRequired = tokenAmount + (networkFee * exchangeRate);
+
+    return {
+      amountUSD,
+      exchangeRate,
+      networkFee,
+      totalRequired,
+    };
+  };
+
+  const paymentSummary = calculatePaymentSummary();
 
   return (
     <>
@@ -407,7 +738,7 @@ export default function PaymentsPage() {
                     </h1>
                   </div>
                   <p className="text-lg text-gray-600 leading-relaxed">
-                    Process loan payments in various cryptocurrencies
+                    Process loan payments using cryptocurrency on the blockchain
                   </p>
                   <div className="flex items-center gap-4 pt-2">
                     <Badge className="bg-green-100 text-green-800 border-green-200">
@@ -431,6 +762,50 @@ export default function PaymentsPage() {
                       </Badge>
                     )}
                   </div>
+                  {/* Wallet connection status */}
+                  <div className="flex items-center gap-4 pt-2">
+                    {isWalletConnected ? (
+                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
+                        <Wallet className="h-3 w-3 mr-1" />
+                        {userAddress.slice(0, 6)}...{userAddress.slice(-4)}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-red-700 border-red-200">
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        Wallet Not Connected
+                      </Badge>
+                    )}
+                    {networkInfo && (
+                      <Badge variant="outline" className="text-purple-700 border-purple-200">
+                        {networkInfo.name}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Action buttons */}
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={refreshData}
+                    variant="outline"
+                    size="lg"
+                    disabled={loading || !isWalletConnected}
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                  
+                  {!isWalletConnected && (
+                    <Button
+                      onClick={connectWallet}
+                      size="lg"
+                      className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    >
+                      <Wallet className="h-4 w-4" />
+                      Connect Wallet
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -531,7 +906,49 @@ export default function PaymentsPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-8">
-                    <form action={handlePayment} className="space-y-6">
+                    {!isWalletConnected ? (
+                      <div className="text-center py-12">
+                        <Wallet className="h-16 w-16 mx-auto mb-4 opacity-40 text-muted-foreground" />
+                        <h3 className="text-xl font-semibold mb-2 text-gray-900">
+                          Connect Your Wallet
+                        </h3>
+                        <p className="text-muted-foreground mb-6">
+                          Connect your MetaMask wallet to view and make loan payments
+                        </p>
+                        <Button 
+                          onClick={connectWallet}
+                          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                        >
+                          <Wallet className="h-4 w-4 mr-2" />
+                          Connect Wallet
+                        </Button>
+                      </div>
+                    ) : loans.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Calendar className="h-16 w-16 mx-auto mb-4 opacity-40 text-muted-foreground" />
+                        <h3 className="text-xl font-semibold mb-2 text-gray-900">
+                          No Active Loans
+                        </h3>
+                        <p className="text-muted-foreground mb-6">
+                          You don't have any active loans to make payments for
+                        </p>
+                        <Button variant="outline" asChild>
+                          <a href="/dashboard/loans">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create New Loan
+                          </a>
+                        </Button>
+                      </div>
+                    ) : (
+                    <form
+                      className="space-y-6"
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const form = e.target as HTMLFormElement;
+                        const formData = new FormData(form);
+                        await handlePayment(formData);
+                      }}
+                    >
                       <div className="space-y-3">
                         <Label
                           htmlFor="loan_id"
@@ -549,19 +966,25 @@ export default function PaymentsPage() {
                             <SelectValue placeholder="Choose a loan to pay" />
                           </SelectTrigger>
                           <SelectContent>
-                            {loans.map((loan) => (
-                              <SelectItem key={loan.id} value={loan.id}>
-                                <div className="flex items-center justify-between w-full">
-                                  <span className="font-medium">
-                                    {loan.assets.name}
-                                  </span>
-                                  <span className="text-sm text-muted-foreground ml-4">
-                                    ${loan.monthly_payment.toLocaleString()}{" "}
-                                    monthly
-                                  </span>
-                                </div>
-                              </SelectItem>
-                            ))}
+                            {loans.map((loan) => {
+                              // Calculate proper monthly payment based on loan terms
+                              const loanTermMonths = loan.duration / (30 * 24 * 60 * 60); // Convert seconds to months
+                              const monthlyAmount = loan.isActive && loanTermMonths > 0 
+                                ? loan.totalDebt / loanTermMonths 
+                                : 0;
+                              return (
+                                <SelectItem key={loan.loanId} value={loan.loanId.toString()}>
+                                  <div className="flex items-center justify-between w-full">
+                                    <span className="font-medium">
+                                      Loan #{loan.loanId}
+                                    </span>
+                                    <span className="text-sm text-muted-foreground ml-4">
+                                      ${monthlyAmount.toLocaleString()} monthly
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                       </div>
@@ -582,19 +1005,22 @@ export default function PaymentsPage() {
                             min="0"
                             placeholder="2500.00"
                             required
+                            value={paymentAmount}
+                            onChange={(e) => setPaymentAmount(e.target.value)}
                             className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20"
                           />
                         </div>
                         <div className="space-y-3">
                           <Label className="text-sm font-semibold text-gray-700">
-                            Currency
+                            Payment Type *
                           </Label>
-                          <Select defaultValue="USD" disabled>
-                            <SelectTrigger className="h-12 border-gray-200 bg-gray-50">
+                          <Select name="payment_type" required defaultValue="monthly">
+                            <SelectTrigger className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="USD">USD</SelectItem>
+                              <SelectItem value="monthly">Monthly Payment</SelectItem>
+                              <SelectItem value="full">Full Repayment</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -607,22 +1033,27 @@ export default function PaymentsPage() {
                         >
                           Pay with Cryptocurrency *
                         </Label>
-                        <Select name="crypto_currency" required>
+                        <Select 
+                          name="crypto_currency" 
+                          required
+                          value={selectedToken}
+                          onValueChange={setSelectedToken}
+                        >
                           <SelectTrigger className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20">
                             <SelectValue placeholder="Select cryptocurrency" />
                           </SelectTrigger>
                           <SelectContent>
-                            {cryptoCurrencies.map((crypto) => (
+                            {availableTokens.map((token) => (
                               <SelectItem
-                                key={crypto.symbol}
-                                value={crypto.symbol}
+                                key={token.symbol}
+                                value={token.symbol}
                               >
                                 <div className="flex items-center justify-between w-full">
                                   <span className="font-medium">
-                                    {crypto.symbol} - {crypto.name}
+                                    {token.symbol} - {token.name}
                                   </span>
                                   <span className="text-sm text-muted-foreground ml-4">
-                                    Rate: {crypto.rate}
+                                    Rate: {tokenRates[token.symbol] || 1.0}
                                   </span>
                                 </div>
                               </SelectItem>
@@ -638,17 +1069,23 @@ export default function PaymentsPage() {
                         >
                           Blockchain Network *
                         </Label>
-                        <Select name="blockchain" required>
-                          <SelectTrigger className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20">
+                        <Select name="blockchain" required value={selectedNetwork} disabled>
+                          <SelectTrigger className="h-12 border-gray-200 bg-gray-50">
                             <SelectValue placeholder="Select network" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="ethereum">Ethereum</SelectItem>
-                            <SelectItem value="polygon">Polygon</SelectItem>
-                            <SelectItem value="arbitrum">Arbitrum</SelectItem>
-                            <SelectItem value="optimism">Optimism</SelectItem>
+                            {Object.entries(SUPPORTED_NETWORKS).map(([key, network]) => (
+                              <SelectItem key={key} value={network.name}>
+                                {network.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
+                        {networkInfo && (
+                          <p className="text-xs text-muted-foreground">
+                            Connected to: {networkInfo.name} (Chain ID: {networkInfo.chainId})
+                          </p>
+                        )}
                       </div>
 
                       <div className="border border-gray-200 bg-gray-50/30 rounded-lg p-6 space-y-3">
@@ -659,24 +1096,30 @@ export default function PaymentsPage() {
                           <span className="text-muted-foreground">
                             Payment Amount:
                           </span>
-                          <span className="font-medium">$2,500.00</span>
+                          <span className="font-medium">
+                            ${paymentSummary.amountUSD.toLocaleString() || '0.00'}
+                          </span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">
                             Exchange Rate:
                           </span>
-                          <span className="font-medium">1 USDC = $1.00</span>
+                          <span className="font-medium">
+                            1 {selectedToken || 'USDC'} = ${(1 / (tokenRates[selectedToken] || 1)).toFixed(2)}
+                          </span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">
                             Network Fee:
                           </span>
-                          <span className="font-medium">~$2.50</span>
+                          <span className="font-medium">~${paymentSummary.networkFee.toFixed(2)}</span>
                         </div>
                         <Separator />
                         <div className="flex justify-between font-semibold text-base">
                           <span>Total Required:</span>
-                          <span className="text-blue-600">2,502.50 USDC</span>
+                          <span className="text-blue-600">
+                            {paymentSummary.totalRequired.toFixed(2)} {selectedToken || 'USDC'}
+                          </span>
                         </div>
                       </div>
 
@@ -689,6 +1132,7 @@ export default function PaymentsPage() {
                         Process Payment
                       </SubmitButton>
                     </form>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -707,17 +1151,26 @@ export default function PaymentsPage() {
                     {loans && loans.length > 0 ? (
                       <div className="space-y-6">
                         {loans.slice(0, 5).map((loan) => {
+                          // Calculate next payment due date based on loan start time and payment periods
+                          const monthsPassed = Math.floor((Date.now() / 1000 - loan.startTime) / (30 * 24 * 60 * 60));
+                          const nextPaymentMonth = monthsPassed + 1;
+                          const nextPaymentDate = new Date((loan.startTime + nextPaymentMonth * 30 * 24 * 60 * 60) * 1000);
+                          
                           const daysUntil = Math.ceil(
-                            (new Date(loan.next_payment_date).getTime() -
-                              new Date().getTime()) /
-                              (1000 * 60 * 60 * 24)
+                            (nextPaymentDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
                           );
                           const isOverdue = daysUntil < 0;
                           const isDueSoon = daysUntil <= 7 && daysUntil >= 0;
+                          
+                          // Calculate proper monthly payment based on loan terms
+                          const loanTermMonths = loan.duration / (30 * 24 * 60 * 60); // Convert seconds to months
+                          const monthlyAmount = loan.isActive && loanTermMonths > 0 
+                            ? loan.totalDebt / loanTermMonths 
+                            : 0;
 
                           return (
                             <div
-                              key={loan.id}
+                              key={loan.loanId}
                               className={`p-6 rounded-xl border transition-all duration-200 ${
                                 isOverdue
                                   ? "border-red-200 bg-red-50/30 shadow-md"
@@ -729,13 +1182,11 @@ export default function PaymentsPage() {
                               <div className="flex items-center justify-between mb-4">
                                 <div>
                                   <p className="font-semibold text-lg text-gray-900">
-                                    {loan.assets.name}
+                                    Loan #{loan.loanId}
                                   </p>
                                   <p className="text-base text-muted-foreground">
                                     Due:{" "}
-                                    {new Date(
-                                      loan.next_payment_date
-                                    ).toLocaleDateString("en-US", {
+                                    {nextPaymentDate.toLocaleDateString("en-US", {
                                       year: "numeric",
                                       month: "long",
                                       day: "numeric",
@@ -744,7 +1195,7 @@ export default function PaymentsPage() {
                                 </div>
                                 <div className="text-right">
                                   <p className="font-bold text-2xl text-gray-900">
-                                    ${loan.monthly_payment.toLocaleString()}
+                                    ${monthlyAmount.toLocaleString()}
                                   </p>
                                   <p
                                     className={`text-sm font-medium ${
@@ -769,7 +1220,7 @@ export default function PaymentsPage() {
                                 variant="outline"
                                 asChild
                               >
-                                <a href={`/dashboard/payments?loan=${loan.id}`}>
+                                <a href={`/dashboard/payments?loan=${loan.loanId}`}>
                                   {isOverdue ? "Pay Now (Overdue)" : "Pay Now"}
                                 </a>
                               </Button>
@@ -805,33 +1256,40 @@ export default function PaymentsPage() {
                     <div className="space-y-6">
                       {payments.map((payment) => (
                         <div
-                          key={payment.id}
+                          key={payment.hash}
                           className="flex items-center justify-between p-6 border border-gray-200 rounded-xl bg-gray-50/30 hover:shadow-md transition-all duration-200"
                         >
                           <div className="space-y-2">
                             <p className="font-semibold text-lg text-gray-900">
-                              {payment.loans?.assets?.name || "Loan Payment"}
+                              Loan #{payment.loanId} Payment
                             </p>
                             <p className="text-base text-muted-foreground">
-                              {new Date(
-                                payment.payment_date
-                              ).toLocaleDateString("en-US", {
+                              {new Date(payment.timestamp * 1000).toLocaleDateString("en-US", {
                                 year: "numeric",
                                 month: "long",
                                 day: "numeric",
                               })}{" "}
-                              • {payment.crypto_currency || payment.currency}
+                              • {payment.token}
                             </p>
                           </div>
                           <div className="text-right space-y-2">
                             <p className="font-bold text-2xl text-gray-900">
-                              ${payment.amount.toLocaleString()}
+                              ${parseFloat(payment.amount).toLocaleString()}
                             </p>
                             <div className="flex items-center gap-3">
-                              {getStatusBadge(payment.payment_status)}
-                              {payment.transaction_hash && (
+                              {getStatusBadge(payment.status)}
+                              {payment.hash && (
                                 <Badge variant="outline" className="text-xs">
-                                  {payment.blockchain}
+                                  <a 
+                                    href={`${networkInfo?.chainId === 11155111 
+                                      ? 'https://sepolia.etherscan.io' 
+                                      : 'https://etherscan.io'}/tx/${payment.hash}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:underline"
+                                  >
+                                    View Tx
+                                  </a>
                                 </Badge>
                               )}
                             </div>
@@ -846,7 +1304,7 @@ export default function PaymentsPage() {
                         No payment history
                       </h3>
                       <p className="text-muted-foreground text-lg">
-                        Your payment transactions will appear here
+                        Your payment transactions will appear here once you make payments
                       </p>
                     </div>
                   )}

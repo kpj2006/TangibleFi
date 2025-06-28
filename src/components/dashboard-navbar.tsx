@@ -18,7 +18,6 @@ import {
   FileCheck,
   Landmark,
   Coins,
-  Globe,
   Wallet,
   Settings,
   LogOut,
@@ -74,14 +73,6 @@ const navigationItems = [
     badge: "3",
     badgeColor: "bg-emerald-500",
     badgeLabel: "Due Soon",
-  },
-  {
-    name: "Cross-Chain",
-    href: "/dashboard/cross-chain",
-    icon: Globe,
-    badge: "8",
-    badgeColor: "bg-purple-500",
-    badgeLabel: "Networks",
   },
 ];
 
@@ -183,7 +174,7 @@ export default function DashboardNavbar() {
         id: "5",
         type: "system",
         title: "Platform Update",
-        message: `New cross-chain features: 2 new networks, ${formatNumber(150)} new assets supported`,
+        message: `Platform improvements: Enhanced performance and ${formatNumber(150)} new assets supported`,
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 days ago
         read: true,
         priority: "low",
@@ -404,13 +395,6 @@ export default function DashboardNavbar() {
                       <Landmark className="h-4 w-4 text-orange-600" />
                       <span className="text-sm">Search in Loans</span>
                     </Link>
-                    <Link
-                      href={`/dashboard/cross-chain?search=${searchQuery}`}
-                      className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors"
-                    >
-                      <Globe className="h-4 w-4 text-emerald-600" />
-                      <span className="text-sm">Search in Cross-Chain</span>
-                    </Link>
                   </div>
                 </div>
               )}
@@ -485,25 +469,6 @@ export default function DashboardNavbar() {
                       </p>
                       <p className="text-xs text-gray-500">
                         Automated stablecoin repayments
-                      </p>
-                    </div>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link
-                    href="/dashboard/cross-chain/connect"
-                    className="flex items-center gap-3 p-3"
-                  >
-                    <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center">
-                      <Globe className="w-4 h-4 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        Connect Wallet
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Link blockchain accounts
                       </p>
                     </div>
                   </Link>

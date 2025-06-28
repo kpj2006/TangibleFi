@@ -58,9 +58,9 @@ export default function Hero() {
               </div>
               <div className="flex flex-col items-center p-6 bg-white rounded-xl shadow-sm">
                 <Globe className="w-10 h-10 text-blue-600 mb-4" />
-                <h3 className="font-semibold mb-2">Cross-Chain Activity</h3>
+                <h3 className="font-semibold mb-2">Global Access</h3>
                 <p className="text-sm text-gray-600">
-                  Unified view across multiple blockchains
+                  Access your portfolio from anywhere in the world
                 </p>
               </div>
             </div>

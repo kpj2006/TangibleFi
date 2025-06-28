@@ -79,14 +79,6 @@ const navigationItems = [
     badgeColor: "bg-emerald-500",
     badgeLabel: "Due Soon",
   },
-  {
-    name: "Cross-Chain",
-    href: "/dashboard/cross-chain",
-    icon: Globe,
-    badge: "8",
-    badgeColor: "bg-purple-500",
-    badgeLabel: "Networks",
-  },
 ];
 
 interface Notification {

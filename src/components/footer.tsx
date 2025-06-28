@@ -143,7 +143,7 @@ export default function Footer() {
                   href="#"
                   className="text-blue-200 hover:text-white transition-colors duration-300 text-sm"
                 >
-                  Cross-Chain Management
+                  Portfolio Management
                 </Link>
               </li>
               <li>

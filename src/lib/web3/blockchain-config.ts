@@ -3,6 +3,7 @@ import AutomationLoanAbi from '@/contracts/abis/AutomationLoan.json';
 import ViewFacetAbi from '@/contracts/abis/ViewFacet.json';
 import CrossChainFacetAbi from '@/contracts/abis/CrossChainFacet.json';
 import DiamondLoupeFacetAbi from '@/contracts/abis/DiamondLoupeFacet.json';
+import { Star, Award, Crown } from 'lucide-react';
 
 // Blockchain Configuration for Real Data Integration
 export interface NetworkConfig {
@@ -31,7 +32,7 @@ export const SUPPORTED_NETWORKS: Record<string, NetworkConfig> = {
         name: "Ethereum Mainnet",
         symbol: "ETH",
         rpcUrl: process.env.NEXT_PUBLIC_ETHEREUM_RPC_URL ||
-            "https://cloudflare-eth.com",
+            "https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
         blockExplorer: "https://etherscan.io",
         isTestnet: false,
         nativeCurrency: {
@@ -112,7 +113,7 @@ export const SUPPORTED_NETWORKS: Record<string, NetworkConfig> = {
         name: "Ethereum Sepolia",
         symbol: "SepoliaETH",
         rpcUrl: process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL ||
-            "https://rpc.sepolia.org",
+            "https://eth-sepolia.g.alchemy.com/v2/demo",
         blockExplorer: "https://sepolia.etherscan.io",
         isTestnet: true,
         nativeCurrency: {
@@ -121,7 +122,7 @@ export const SUPPORTED_NETWORKS: Record<string, NetworkConfig> = {
             decimals: 18,
         },
         contracts: {
-            diamond: process.env.NEXT_PUBLIC_SEPOLIA_DIAMOND_ADDRESS
+            diamond: process.env.NEXT_PUBLIC_SEPOLIA_DIAMOND_ADDRESS,
             // authUser: process.env.NEXT_PUBLIC_SEPOLIA_AUTH_USER_ADDRESS ||
             //     "0xF21BaC0864E865B34d94F6D117B81f5Ff00a522B",
         },
@@ -195,6 +196,26 @@ export const POPULAR_TOKENS: Record<
             decimals: 6,
         },
     ],
+    sepolia: [
+        {
+            address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+            symbol: "USDC",
+            name: "Test USD Coin",
+            decimals: 6,
+        },
+        {
+            address: "0xF2aAFEf1E47dA2B259CA1B8bA9F1FCEedfba3F40",
+            symbol: "USDT",
+            name: "Test Tether USD",
+            decimals: 18,
+        },
+        {
+            address: "0xFF34B3d4Aee8ddCd6F9AFFFB6Fe49bD371b8a357",
+            symbol: "DAI",
+            name: "Test Dai Stablecoin",
+            decimals: 18,
+        },
+    ],
 };
 
 // Gas limits for different operations
@@ -204,6 +225,65 @@ export const GAS_LIMITS = {
     nftMint: 200000,
     loanCreate: 300000,
     crossChainBridge: 500000,
+};
+
+// Loan tiers configuration
+export const LOAN_TIERS = [
+    {
+        id: "standard",
+        name: "Standard Tier",
+        icon: Star,
+        maxLTV: 60,
+        interestRate: 8.5,
+        color: "blue",
+        description: "Basic lending tier for verified assets",
+        minAssetValue: 10000,
+        maxLoanAmount: 500000,
+        gasEstimate: GAS_LIMITS.loanCreate,
+    },
+    {
+        id: "premium", 
+        name: "Premium Tier",
+        icon: Award,
+        maxLTV: 75,
+        interestRate: 6.5,
+        color: "purple",
+        description: "Enhanced terms for high-value assets",
+        minAssetValue: 50000,
+        maxLoanAmount: 2000000,
+        gasEstimate: GAS_LIMITS.loanCreate + 50000,
+    },
+    {
+        id: "elite",
+        name: "Elite Tier", 
+        icon: Crown,
+        maxLTV: 85,
+        interestRate: 4.5,
+        color: "gold",
+        description: "Exclusive tier for premium real estate",
+        minAssetValue: 250000,
+        maxLoanAmount: 10000000,
+        gasEstimate: GAS_LIMITS.loanCreate + 100000,
+    },
+];
+
+// Fallback RPC URLs for better reliability
+export const FALLBACK_RPC_URLS: Record<string, string[]> = {
+    sepolia: [
+        "https://eth-sepolia.g.alchemy.com/v2/demo",
+        "https://rpc.sepolia.dev",
+        "https://1rpc.io/sepolia"
+    ],
+    ethereum: [
+        "https://cloudflare-eth.com",
+        "https://ethereum.publicnode.com",
+        "https://1rpc.io/eth"
+    ],
+    polygon: [
+        "https://polygon-rpc.com",
+        "https://rpc-mainnet.maticvigil.com",
+        "https://polygon.llamarpc.com"
+    ]
 };
 
 // Utility functions

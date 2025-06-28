@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Card, CardContent } from "../ui/card";
-import { TransactionStats } from "../../hooks/use-transaction-data";
+import { BlockchainTransactionStats } from "../../hooks/use-blockchain-transactions";
 import {
   TrendingUp,
   TrendingDown,
@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 interface TransactionStatsCardsProps {
-  stats: TransactionStats;
+  stats: BlockchainTransactionStats;
   loading?: boolean;
   className?: string;
 }
