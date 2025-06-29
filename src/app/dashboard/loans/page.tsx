@@ -338,7 +338,7 @@ export default function BlockchainLoansPage() {
   const totalLoanAmount = loans.reduce((sum, loan) => sum + loan.loanAmount, 0);
   const totalOutstanding = loans.reduce((sum, loan) => sum + loan.outstandingBalance, 0);
   const totalMonthlyPayments = loans.reduce((sum, loan) => sum + loan.monthlyPayment, 0);
-  const activeLoans = loans.filter((loan) => loan.isActive).length;
+  const totalLoans = loans.length;
 
   return (
     <>
@@ -361,7 +361,7 @@ export default function BlockchainLoansPage() {
                   <div className="flex items-center gap-4 pt-2">
                     <Badge className="bg-green-100 text-green-800 border-green-200">
                       <CheckCircle className="h-3 w-3 mr-1" />
-                      {activeLoans} Active
+                      {totalLoans} Loans
                     </Badge>
                     <Badge
                       variant="outline"
@@ -412,7 +412,7 @@ export default function BlockchainLoansPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-xl sm:text-2xl font-bold text-gray-900 break-words">
-                      {activeLoans}
+                      {totalLoans}
                     </p>
                     <div className="flex items-center gap-1 text-blue-600 mt-2">
                       <Activity className="h-4 w-4" />
@@ -542,7 +542,6 @@ export default function BlockchainLoansPage() {
                                     <CardTitle className="text-2xl bg-gradient-to-r from-gray-900 to-blue-800 bg-clip-text text-transparent">
                                       {formatCompactNumber(loan.loanAmount)} Loan
                                     </CardTitle>
-                                    {getStatusBadge(loan.isActive === true ? "active" : loan.status || "inactive")}
                                     <Badge
                                       variant="outline"
                                       className="text-xs bg-gray-50/80 text-gray-700 border-gray-200"
