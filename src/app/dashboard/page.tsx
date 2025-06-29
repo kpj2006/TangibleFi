@@ -447,55 +447,7 @@ export default function Dashboard() {
       </div>
 
       {/* Search and Filter Bar */}
-      <div className="flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search assets, loans, positions..."
-            className="pl-10"
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Filter className="h-4 w-4 mr-2" />
-            Filter
-          </Button>
-          <Button variant="outline" size="sm">
-            <Calendar className="h-4 w-4 mr-2" />
-            Last 30 days
-          </Button>
-          {searchQuery && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSearchQuery("")}
-            >
-              Clear Search
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Search Results Indicator */}
-      {searchQuery && (
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium text-blue-900">
-                  Search results for "{searchQuery}"
-                </span>
-              </div>
-              <div className="text-sm text-blue-700">
-                {filteredAssets.length + filteredLoans.length} items found
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Removed search bar as requested */}
 
       {/* Success Message */}
       {showRefreshed && (
@@ -566,13 +518,13 @@ export default function Dashboard() {
             Quick Actions
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Link href="/dashboard/assets/new">
+            <Link href="/dashboard/assets">
               <Button className="w-full bg-white/20 hover:bg-white/30 border-white/30 text-white">
                 <PlusCircle className="h-4 w-4 mr-2" />
                 Add Asset
               </Button>
             </Link>
-            <Link href="/dashboard/loans/new">
+            <Link href="/dashboard/loans?page=request-loan">
               <Button className="w-full bg-white/20 hover:bg-white/30 border-white/30 text-white">
                 <Landmark className="h-4 w-4 mr-2" />
                 Apply Loan
@@ -590,58 +542,6 @@ export default function Dashboard() {
 
       {/* Achievement/Progress Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 rounded-full">
-                <Trophy className="h-5 w-5 text-yellow-600" />
-              </div>
-              <div>
-                <h4 className="font-semibold text-yellow-900">
-                  Portfolio Milestone
-                </h4>
-                <p className="text-sm text-yellow-700">
-                  {verifiedAssetsCount >= 5
-                    ? "Expert Investor!"
-                    : `${5 - verifiedAssetsCount} more assets to Expert level`}
-                </p>
-              </div>
-            </div>
-            <Progress
-              value={(verifiedAssetsCount / 5) * 100}
-              className="mt-3 h-2"
-            />
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-full">
-                <ShieldCheck className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <h4 className="font-semibold text-green-900">
-                  Verification Score
-                </h4>
-                <p className="text-sm text-green-700">
-                  {Math.round(
-                    (verifiedAssetsCount / Math.max(filteredAssets.length, 1)) *
-                      100
-                  )}
-                  % of assets verified
-                </p>
-              </div>
-            </div>
-            <Progress
-              value={
-                (verifiedAssetsCount / Math.max(filteredAssets.length, 1)) * 100
-              }
-              className="mt-3 h-2"
-            />
-          </CardContent>
-        </Card>
-
         <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -966,7 +866,7 @@ export default function Dashboard() {
                 className="w-full justify-start"
                 variant="outline"
               >
-                <Link href="/dashboard/assets/new">
+                <Link href="/dashboard/assets">
                   <Plus className="h-4 w-4 mr-2" />
                   Add New Asset
                 </Link>

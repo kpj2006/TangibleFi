@@ -474,17 +474,6 @@ export default function AssetsPage() {
                   }
                   onMintSuccess={handleMintSuccess}
                 />
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                >
-                  <Link href="/dashboard/assets/new">
-                    <Plus className="h-5 w-5 mr-2" />
-                    Traditional Upload
-                  </Link>
-                </Button>
               </div>
             }
           />
@@ -759,17 +748,6 @@ export default function AssetsPage() {
                         }
                         onMintSuccess={handleMintSuccess}
                       />
-                      <Button
-                        asChild
-                        size="lg"
-                        variant="outline"
-                        className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                      >
-                        <Link href="/dashboard/assets/new">
-                          <Plus className="h-5 w-5 mr-2" />
-                          Traditional Upload
-                        </Link>
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
