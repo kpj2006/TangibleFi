@@ -736,9 +736,11 @@ export default function LoanRequestModal({ children }: LoanRequestModalProps) {
       // Test 3: calculateInterestRate for different durations
       const durations = [
         30 * 24 * 60 * 60,
+        90 * 24 * 60 * 60,
         180 * 24 * 60 * 60,
+        270 * 24 * 60 * 60,
         365 * 24 * 60 * 60,
-      ]; // 1, 6, 12 months
+      ]; // 1,3, 6,9, 12 months
       for (const duration of durations) {
         const rate = await viewFacetContract.calculateInterestRate(duration);
         debugLog(
@@ -2428,13 +2430,17 @@ export default function LoanRequestModal({ children }: LoanRequestModalProps) {
             {(() => {
               const asset = assets.find((a) => a.tokenId === selectedAsset);
               if (!asset) {
-                return <SelectValue placeholder="Choose an asset to use as collateral" />;
+                return (
+                  <SelectValue placeholder="Choose an asset to use as collateral" />
+                );
               }
               return (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2 sm:gap-4">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{asset.name}</p>
-                    <p className="text-sm text-gray-500 truncate">{asset.assetType}</p>
+                    <p className="text-sm text-gray-500 truncate">
+                      {asset.assetType}
+                    </p>
                     {debugMode && asset.hasActiveInvestment && (
                       <p className="text-xs text-blue-600 truncate">
                         💰 Investment: ${asset.investmentAmount?.toFixed(2)}
@@ -2474,11 +2480,17 @@ export default function LoanRequestModal({ children }: LoanRequestModalProps) {
           <SelectContent>
             <div className="max-h-72 overflow-y-auto min-w-[420px] w-full max-w-xl">
               {assets.map((asset) => (
-                <SelectItem key={asset.tokenId} value={asset.tokenId} className="w-full">
+                <SelectItem
+                  key={asset.tokenId}
+                  value={asset.tokenId}
+                  className="w-full"
+                >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2 sm:gap-4 p-2">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{asset.name}</p>
-                      <p className="text-sm text-gray-500 truncate">{asset.assetType}</p>
+                      <p className="text-sm text-gray-500 truncate">
+                        {asset.assetType}
+                      </p>
                       {debugMode && asset.activeLoanId && (
                         <p className="text-xs text-orange-600 truncate">
                           🔒 Loan: {asset.activeLoanId}
@@ -2515,11 +2527,13 @@ export default function LoanRequestModal({ children }: LoanRequestModalProps) {
                           </Badge>
                         )}
                       </div>
-                      {debugMode && asset.interestRate && asset.interestRate > 0 && (
-                        <p className="text-xs text-gray-500 truncate mt-1">
-                          Rate: {asset.interestRate.toFixed(2)}%
-                        </p>
-                      )}
+                      {debugMode &&
+                        asset.interestRate &&
+                        asset.interestRate > 0 && (
+                          <p className="text-xs text-gray-500 truncate mt-1">
+                            Rate: {asset.interestRate.toFixed(2)}%
+                          </p>
+                        )}
                     </div>
                   </div>
                 </SelectItem>
@@ -2866,7 +2880,7 @@ export default function LoanRequestModal({ children }: LoanRequestModalProps) {
               <SelectValue placeholder="Select term" />
             </SelectTrigger>
             <SelectContent>
-              {[6, 12, 18, 24, 36, 48, 60].map((months) => (
+              {[1, 3, 6, 9, 12].map((months) => (
                 <SelectItem key={months} value={months.toString()}>
                   {months} months ({Math.round((months / 12) * 10) / 10} years)
                 </SelectItem>
