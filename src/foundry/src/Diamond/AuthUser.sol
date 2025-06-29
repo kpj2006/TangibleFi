@@ -19,7 +19,7 @@ contract AuthUser is ERC721URIStorage, Modifiers {
         address to,
         string memory _tokenURI,
         uint256 valuation
-    ) public onlyOwner returns (uint256) {
+    ) public returns (uint256) {
         require(to != address(0), "Cannot mint to zero address");
         require(bytes(_tokenURI).length > 0, "Token URI cannot be empty");
         require(valuation > 0, "Valuation must be greater than zero");
@@ -53,6 +53,4 @@ contract AuthUser is ERC721URIStorage, Modifiers {
 
         return tokenId;
     }
-
-    
 }

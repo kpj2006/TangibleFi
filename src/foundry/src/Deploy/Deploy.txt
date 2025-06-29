@@ -1,43 +1,43 @@
 Deploying contracts with the account: 0x9aD95Ef94D945B039eD5E8059603119b61271486
-Account balance: 0.00588077106599761
+Account balance: 0.021733056090478323
 Deploying DiamondCutFacet...
 Loaded DiamondCutFacet artifact with 4 ABI entries
 Functions in DiamondCutFacet ABI: 1
-DiamondCutFacet deployed to: 0xb08eeE23E6D0336074f1E872A7b4ef7Dfbc22799
+DiamondCutFacet deployed to: 0x99baFA8B3B03bdc884303ca0AeC1c0A32399338f
 Deploying Diamond...
 Loaded Diamond artifact with 6 ABI entries
 Functions in Diamond ABI: 0
-Diamond deployed to: 0xF3b0B6864adf6328766DE44415B4BD15e4A8d238
+Diamond deployed to: 0x8d5e70E4b7402E92E04010C33805F1Bc63116363
 Deploying DiamondInit...
 Loaded DiamondInit artifact with 1 ABI entries
 Functions in DiamondInit ABI: 1
-DiamondInit deployed to: 0xd97D66F55eEA05D1c83A8F91DcBaf3383B1C9D09
+DiamondInit deployed to: 0x53ea5E36F5aBa9b884B0D8478A5183cCB2ede0B7
 Deploying DiamondLoupeFacet...
 Loaded DiamondLoupeFacet artifact with 5 ABI entries
 Functions in DiamondLoupeFacet ABI: 5
-DiamondLoupeFacet deployed to: 0x99849830ef80807843784a50E9641Ba0b8B0815c
+DiamondLoupeFacet deployed to: 0x4c07a983C39F6d55126F46a298536156906301fE
 Deploying OwnershipFacet...
 Loaded OwnershipFacet artifact with 5 ABI entries
 Functions in OwnershipFacet ABI: 3
-OwnershipFacet deployed to: 0xAdF28c38c9551e143Bd52d7c7c5d0A99A8100cfb
+OwnershipFacet deployed to: 0x014dccEe25D52729304625662BEc1E8d662595d0
 Deploying AuthUser...
 Loaded AuthUser artifact with 28 ABI entries
 Functions in AuthUser ABI: 14
-AuthUser deployed to: 0x772E987b5a81d35c4E978B061F112dDC1B0F6BF8
+AuthUser deployed to: 0x12525730D6339c131DCfc36115307D19a9E5ab1e
 Deploying ViewFacet...
 Loaded ViewFacet artifact with 16 ABI entries
 Functions in ViewFacet ABI: 13
-ViewFacet deployed to: 0xaC83a11560bc2F14C764Da0077Ee096D5b562Dac
+ViewFacet deployed to: 0x4c3Be546071d5bDc9Ef9eFAd628dF692FfA4D56A
 
 Using Sepolia CCIP Router address: 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59
 Deploying CrossChainFacet...
 Loaded CrossChainFacet artifact with 6 ABI entries
 Functions in CrossChainFacet ABI: 3
-CrossChainFacet deployed to: 0xa64966E9e3Acc50Ce186F417bEcBe875D62e1930
+CrossChainFacet deployed to: 0xD9394e954cb57280570AAA604C4b0F00186D7698
 Deploying AutomationLoan...
 Loaded AutomationLoan artifact with 28 ABI entries
 Functions in AutomationLoan ABI: 11
-AutomationLoan deployed to: 0xB72CC1CBD41c0F4CcC710Cc74559E644cc503e7d
+AutomationLoan deployed to: 0xD85E7A3957b9E2BD619940dfa116593011a06a1d
 Getting selectors for DiamondLoupeFacet:
   Function: facetAddress, Selector: 0xcdffacc6
   Function: facetAddresses, Selector: 0x52ef6b2c
@@ -110,17 +110,17 @@ Getting selectors for CrossChainFacet:
   0x01ffc9a7 is already registered in DiamondLoupeFacet
 Added CrossChainFacet with 2 unique selectors
 Calling diamondCut to add 6 facets...
-Diamond cut transaction: 0xfb8ab8ac08f371d612ad1a40c85b4f3bb62725f81929a0bfbb7cec0521e72e16
+Diamond cut transaction: 0xdddf566e823af67bbe908116ba6d2ea1f8f38d2914f31f541d15bbb1be016194
 Diamond cut completed! Gas used: 1880187
 
 --- DEPLOYMENT SUMMARY ---
-Diamond: 0xF3b0B6864adf6328766DE44415B4BD15e4A8d238
-DiamondCutFacet: 0xb08eeE23E6D0336074f1E872A7b4ef7Dfbc22799
-DiamondLoupeFacet: 0x99849830ef80807843784a50E9641Ba0b8B0815c
-DiamondInit: 0xd97D66F55eEA05D1c83A8F91DcBaf3383B1C9D09
-OwnershipFacet: 0xAdF28c38c9551e143Bd52d7c7c5d0A99A8100cfb
-AuthUser: 0x772E987b5a81d35c4E978B061F112dDC1B0F6BF8
-ViewFacet: 0xaC83a11560bc2F14C764Da0077Ee096D5b562Dac
-CrossChainFacet: 0xa64966E9e3Acc50Ce186F417bEcBe875D62e1930
-AutomationLoan: 0xB72CC1CBD41c0F4CcC710Cc74559E644cc503e7d
+Diamond: 0x8d5e70E4b7402E92E04010C33805F1Bc63116363
+DiamondCutFacet: 0x99baFA8B3B03bdc884303ca0AeC1c0A32399338f
+DiamondLoupeFacet: 0x4c07a983C39F6d55126F46a298536156906301fE
+DiamondInit: 0x53ea5E36F5aBa9b884B0D8478A5183cCB2ede0B7
+OwnershipFacet: 0x014dccEe25D52729304625662BEc1E8d662595d0
+AuthUser: 0x12525730D6339c131DCfc36115307D19a9E5ab1e
+ViewFacet: 0x4c3Be546071d5bDc9Ef9eFAd628dF692FfA4D56A
+CrossChainFacet: 0xD9394e954cb57280570AAA604C4b0F00186D7698
+AutomationLoan: 0xD85E7A3957b9E2BD619940dfa116593011a06a1d
 ------------------------
