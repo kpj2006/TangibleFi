@@ -67,6 +67,7 @@ interface LoanData {
   // Additional token info for proper display
   tokenSymbol?: string;
   tokenDecimals?: number;
+  monthlyPayment?: number;
 }
 
 interface PaymentTransaction {
@@ -190,6 +191,7 @@ const fetchUserLoans = async (
           // Add token info for display
           tokenSymbol: tokenSymbol,
           tokenDecimals: tokenDecimals,
+          monthlyPayment: loanData.monthlyPayment,
         });
       } catch (error) {
         console.error(`Error fetching loan ${loanId}:`, error);
@@ -969,9 +971,9 @@ export default function PaymentsPage() {
                             {loans.map((loan) => {
                               // Calculate proper monthly payment based on loan terms
                               const loanTermMonths = loan.duration / (30 * 24 * 60 * 60); // Convert seconds to months
-                              const monthlyAmount = loan.isActive && loanTermMonths > 0 
-                                ? loan.totalDebt / loanTermMonths 
-                                : 0;
+                              const monthlyAmount = loan.monthlyPayment
+                                ? loan.monthlyPayment
+                                : (loanTermMonths > 0 ? loan.totalDebt / loanTermMonths : 0);
                               return (
                                 <SelectItem key={loan.loanId} value={loan.loanId.toString()}>
                                   <div className="flex items-center justify-between w-full">
@@ -1151,22 +1153,26 @@ export default function PaymentsPage() {
                     {loans && loans.length > 0 ? (
                       <div className="space-y-6">
                         {loans.slice(0, 5).map((loan) => {
-                          // Calculate next payment due date based on loan start time and payment periods
-                          const monthsPassed = Math.floor((Date.now() / 1000 - loan.startTime) / (30 * 24 * 60 * 60));
-                          const nextPaymentMonth = monthsPassed + 1;
-                          const nextPaymentDate = new Date((loan.startTime + nextPaymentMonth * 30 * 24 * 60 * 60) * 1000);
-                          
+                          // Calculate next payment due date: always 30 days after loan start
+                          let actualStartTime = loan.startTime;
+                          if (!actualStartTime || isNaN(actualStartTime) || actualStartTime < 1000000000) {
+                            // If start time is 0 or invalid, use current time
+                            actualStartTime = Math.floor(Date.now() / 1000);
+                          }
+                          const nextPaymentTime = actualStartTime + (30 * 24 * 60 * 60); // 1 month after start
+                          const nextPaymentDate = new Date(nextPaymentTime * 1000);
+
                           const daysUntil = Math.ceil(
                             (nextPaymentDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
                           );
                           const isOverdue = daysUntil < 0;
                           const isDueSoon = daysUntil <= 7 && daysUntil >= 0;
-                          
+
                           // Calculate proper monthly payment based on loan terms
                           const loanTermMonths = loan.duration / (30 * 24 * 60 * 60); // Convert seconds to months
-                          const monthlyAmount = loan.isActive && loanTermMonths > 0 
-                            ? loan.totalDebt / loanTermMonths 
-                            : 0;
+                          const monthlyAmount = loan.monthlyPayment
+                            ? loan.monthlyPayment
+                            : (loanTermMonths > 0 ? loan.totalDebt / loanTermMonths : 0);
 
                           return (
                             <div
@@ -1185,8 +1191,7 @@ export default function PaymentsPage() {
                                     Loan #{loan.loanId}
                                   </p>
                                   <p className="text-base text-muted-foreground">
-                                    Due:{" "}
-                                    {nextPaymentDate.toLocaleDateString("en-US", {
+                                    Due: {nextPaymentDate.toLocaleDateString("en-US", {
                                       year: "numeric",
                                       month: "long",
                                       day: "numeric",

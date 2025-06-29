@@ -240,8 +240,12 @@ export default function BlockchainLoansPage() {
           const paymentProgress = ((totalDebt - outstandingBalance) / totalDebt) * 100;
           
           // Calculate next payment date
-          const monthsElapsed = Math.floor(timeElapsed / (30 * 24 * 60 * 60));
-          const nextPaymentTime = loanStartTime + ((monthsElapsed + 1) * 30 * 24 * 60 * 60);
+          let actualStartTime = loanStartTime;
+          if (!actualStartTime || isNaN(actualStartTime) || actualStartTime < 1000000000) {
+            // If start time is 0 or invalid, use current time
+            actualStartTime = Math.floor(Date.now() / 1000);
+          }
+          const nextPaymentTime = actualStartTime + (30 * 24 * 60 * 60); // 1 month after start
           const nextPaymentDate = new Date(nextPaymentTime * 1000);
           
           // Try to get asset details if we have the userAccountTokenId
