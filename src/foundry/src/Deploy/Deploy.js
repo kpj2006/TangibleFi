@@ -8,7 +8,7 @@ const artifactCache = new Map();
 
 // Load ABIs (You'll need to compile your contracts first and have the ABIs available)
 // Helper function to load contract artifacts
-function loadArtifact(contractName) {
+function loadArtifact(contractName) 
   // Return from cache if available
   if (artifactCache.has(contractName)) {
     return artifactCache.get(contractName);
