@@ -27,52 +27,15 @@ export interface NetworkConfig {
 }
 
 export const SUPPORTED_NETWORKS: Record<string, NetworkConfig> = {
-    ethereum: {
-        chainId: 1,
-        name: "Ethereum Mainnet",
-        symbol: "ETH",
-        rpcUrl: process.env.NEXT_PUBLIC_ETHEREUM_RPC_URL ||
-            "https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
-        blockExplorer: "https://etherscan.io",
-        isTestnet: false,
-        nativeCurrency: {
-            name: "Ethereum",
-            symbol: "ETH",
-            decimals: 18,
-        },
-        contracts: {
-            diamond: process.env.NEXT_PUBLIC_ETHEREUM_DIAMOND_ADDRESS,
-            authUser: process.env.NEXT_PUBLIC_ETHEREUM_AUTH_USER_ADDRESS,
-            loanManager: process.env.NEXT_PUBLIC_ETHEREUM_LOAN_MANAGER_ADDRESS,
-            priceOracle: process.env.NEXT_PUBLIC_ETHEREUM_PRICE_ORACLE_ADDRESS,
-        },
-    },
-    polygon: {
-        chainId: 137,
-        name: "Polygon",
-        symbol: "MATIC",
-        rpcUrl: process.env.NEXT_PUBLIC_POLYGON_RPC_URL ||
-            "https://polygon-rpc.com",
-        blockExplorer: "https://polygonscan.com",
-        isTestnet: false,
-        nativeCurrency: {
-            name: "Polygon",
-            symbol: "MATIC",
-            decimals: 18,
-        },
-        contracts: {
-            diamond: process.env.NEXT_PUBLIC_POLYGON_DIAMOND_ADDRESS,
-            authUser: process.env.NEXT_PUBLIC_POLYGON_AUTH_USER_ADDRESS,
-        },
-    },
+   
     arbitrum: {
-        chainId: 42161,
-        name: "Arbitrum One",
+        chainId: 421614,
+        name: "Arbitrum Sepolia",
         symbol: "ARB",
         rpcUrl: process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL ||
-            "https://arb1.arbitrum.io/rpc",
-        blockExplorer: "https://arbiscan.io",
-        isTestnet: false,
+            "https://endpoints.omniatech.io/v1/arbitrum/sepolia/public",
+        blockExplorer: "https://sepolia.arbiscan.io/",
+        isTestnet: true,
         nativeCurrency: {
             name: "Ethereum",
             symbol: "ETH",
@@ -80,34 +43,19 @@ export const SUPPORTED_NETWORKS: Record<string, NetworkConfig> = {
         },
     },
     optimism: {
-        chainId: 10,
-        name: "Optimism",
+        chainId: 11155420,
+        name: "Optimism Sepolia",
         symbol: "OP",
         rpcUrl: process.env.NEXT_PUBLIC_OPTIMISM_RPC_URL ||
-            "https://mainnet.optimism.io",
-        blockExplorer: "https://optimistic.etherscan.io",
-        isTestnet: false,
+            "https://endpoints.omniatech.io/v1/op/sepolia/public",
+        blockExplorer: "https://sepolia-optimism.etherscan.io/",
+        isTestnet: true,
         nativeCurrency: {
             name: "Ethereum",
             symbol: "ETH",
             decimals: 18,
         },
     },
-    bsc: {
-        chainId: 56,
-        name: "BNB Smart Chain",
-        symbol: "BNB",
-        rpcUrl: process.env.NEXT_PUBLIC_BSC_RPC_URL ||
-            "https://bsc-dataseed1.binance.org",
-        blockExplorer: "https://bscscan.com",
-        isTestnet: false,
-        nativeCurrency: {
-            name: "BNB",
-            symbol: "BNB",
-            decimals: 18,
-        },
-    },
-    // Testnets
     sepolia: {
         chainId: 11155111,
         name: "Ethereum Sepolia",
@@ -127,9 +75,52 @@ export const SUPPORTED_NETWORKS: Record<string, NetworkConfig> = {
             //     "0xF21BaC0864E865B34d94F6D117B81f5Ff00a522B",
         },
     },
+    avalanche: {
+        chainId: 43113,
+        name: "Avalanche Fuji",
+        symbol: "AVAX",
+        rpcUrl: process.env.NEXT_PUBLIC_AVALANCHE_RPC_URL ||
+            "https://avalanche-fuji-c-chain-rpc.publicnode.com",
+        blockExplorer: "https://testnet.snowtrace.io/",
+        isTestnet: true,
+        nativeCurrency: {
+            name: "Avalanche",
+            symbol: "AVAX",
+            decimals: 18,
+        },
+       
+    },
+    base: {
+        chainId: 84532,
+        name: "Base Sepolia",
+        symbol: "BASE",
+        rpcUrl: process.env.NEXT_PUBLIC_BASE_RPC_URL ||
+            "https://base-sepolia.drpc.org",
+        blockExplorer: "https://sepolia.basescan.org/",
+        isTestnet: true,
+        nativeCurrency: {
+            name: "Ethereum",
+            symbol: "ETH",
+            decimals: 18,
+        },
+    },
+    unichain: {
+        chainId: 1301,
+        name: "Unichain Sepolia",
+        symbol: "UNI",
+        rpcUrl: process.env.NEXT_PUBLIC_UNICHAIN_RPC_URL ||
+            "https://unichain-sepolia-rpc.publicnode.com",
+        blockExplorer: "https://unichain-sepolia.blockscout.com/",
+        isTestnet: true,
+        nativeCurrency: {
+            name: "Ethereum",
+            symbol: "ETH",
+            decimals: 18,
+        },
+    },
 };
 
-export const DEFAULT_NETWORK = "ethereum";
+// export const DEFAULT_NETWORK = "ethereum";
 export const TESTNET_NETWORKS = ["sepolia"];
 
 // Contract ABIs (will be populated from deployed contracts)
@@ -162,46 +153,13 @@ export const POPULAR_TOKENS: Record<
         logoUri?: string;
     }>
 > = {
-    ethereum: [
-        {
-            address: "0xA0b86a33E6441e8e421c7c7c4b8c8c8c8c8c8c8c",
-            symbol: "USDC",
-            name: "USD Coin",
-            decimals: 6,
-        },
-        {
-            address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-            symbol: "USDT",
-            name: "Tether USD",
-            decimals: 6,
-        },
-        {
-            address: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-            symbol: "DAI",
-            name: "Dai Stablecoin",
-            decimals: 18,
-        },
-    ],
-    polygon: [
-        {
-            address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
-            symbol: "USDC",
-            name: "USD Coin",
-            decimals: 6,
-        },
-        {
-            address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
-            symbol: "USDT",
-            name: "Tether USD",
-            decimals: 6,
-        },
-    ],
+    
     sepolia: [
         {
             address: "0xf661043d9Bc1ef2169Ef90ad3b2285Cf8Bfc0AE2",
             symbol: "USDC",
             name: "Test USD Coin",
-            decimals: 6,
+            decimals: 18,
         },
         {
             address: "0xf2aafef1e47da2b259ca1b8ba9f1fceedfba3f40",
@@ -216,12 +174,12 @@ export const POPULAR_TOKENS: Record<
             decimals: 18,
         },
     ],
-    avalancheFuji: [
+    avalanche: [
         {
             address: "0x7bA2e5c37C4151d654Fcc4b41ffF3Fe693c23852",
             symbol: "USDC",
             name: "Test USD Coin",
-            decimals: 6,
+            decimals: 18,
         },
         {
             address: "0x8dd59e32c10720fb7920dbac0d227aada70a2ed2",
@@ -236,9 +194,9 @@ export const POPULAR_TOKENS: Record<
             decimals: 18,
         },
     ],
-    arbitrumSepolia: [
+    arbitrum: [
         {
-            address: "<ADD_USDC_ADDRESS_HERE>",
+            address: "0x5Df6eD08EEC2fD5e41914d291c0cf48Cd3564421",
             symbol: "USDC",
             name: "Test USD Coin",
             decimals: 6,
@@ -256,9 +214,9 @@ export const POPULAR_TOKENS: Record<
             decimals: 18,
         },
     ],
-    baseSepolia: [
+    base: [
         {
-            address: "<ADD_USDC_ADDRESS_HERE>",
+            address: "0xcBA01C75D035ca98FfC7710DAe710435CA53c03C",
             symbol: "USDC",
             name: "Test USD Coin",
             decimals: 6,
@@ -268,17 +226,12 @@ export const POPULAR_TOKENS: Record<
             symbol: "USDT",
             name: "Test Tether USD",
             decimals: 18,
-        },
-        {
-            address: "<ADD_DAI_ADDRESS_HERE>",
-            symbol: "DAI",
-            name: "Test Dai Stablecoin",
-            decimals: 18,
-        },
+        }
+        
     ],
-    opSepolia: [
+    optimism: [
         {
-            address: "<ADD_USDC_ADDRESS_HERE>",
+            address: "0x5fd84259d66Cd46123540766Be93DFE6D43130D7",
             symbol: "USDC",
             name: "Test USD Coin",
             decimals: 6,
@@ -288,21 +241,11 @@ export const POPULAR_TOKENS: Record<
             symbol: "USDT",
             name: "Test Tether USD",
             decimals: 18,
-        },
-        {
-            address: "<ADD_DAI_ADDRESS_HERE>",
-            symbol: "DAI",
-            name: "Test Dai Stablecoin",
-            decimals: 18,
-        },
+        }
+        
     ],
-    unichainTestnet: [
-        {
-            address: "<ADD_USDC_ADDRESS_HERE>",
-            symbol: "USDC",
-            name: "Test USD Coin",
-            decimals: 6,
-        },
+    unichain: [
+       
         {
             address: "0x65ea2d9e8e4e982ba00085d0d51a48390df294ee",
             symbol: "USDT",
@@ -373,16 +316,6 @@ export const FALLBACK_RPC_URLS: Record<string, string[]> = {
         "https://eth-sepolia.g.alchemy.com/v2/demo",
         "https://rpc.sepolia.dev",
         "https://1rpc.io/sepolia"
-    ],
-    ethereum: [
-        "https://cloudflare-eth.com",
-        "https://ethereum.publicnode.com",
-        "https://1rpc.io/eth"
-    ],
-    polygon: [
-        "https://polygon-rpc.com",
-        "https://rpc-mainnet.maticvigil.com",
-        "https://polygon.llamarpc.com"
     ]
 };
 
