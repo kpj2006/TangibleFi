@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ethers } from "ethers";
 import {
@@ -344,6 +344,35 @@ export default function PaymentsPage() {
   const [paymentAmount, setPaymentAmount] = useState<string>("");
   const [isWalletConnected, setIsWalletConnected] = useState(false);
 
+  // Payment summary calculations
+  const totalPaid = useMemo(() => {
+    return payments
+      .filter((p) => p.status === "confirmed")
+      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  }, [payments]);
+
+  const completedPayments = useMemo(() => {
+    return payments.filter((p) => p.status === "confirmed").length;
+  }, [payments]);
+
+  const pendingPayments = useMemo(() => {
+    return payments.filter((p) => p.status === "pending").length;
+  }, [payments]);
+
+  const thisMonthPaid = useMemo(() => {
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+    return payments
+      .filter(
+        (p) =>
+          p.status === "confirmed" &&
+          new Date(p.timestamp * 1000).getMonth() === thisMonth &&
+          new Date(p.timestamp * 1000).getFullYear() === thisYear
+      )
+      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  }, [payments]);
+
   useEffect(() => {
     const loadBlockchainData = async () => {
       setLoading(true);
@@ -680,23 +709,6 @@ export default function PaymentsPage() {
     );
   }
 
-  // Calculate summaries from blockchain data
-  const totalPaid = payments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
-  const completedPayments = payments.filter(
-    (payment) => payment.status === "confirmed"
-  ).length;
-  const pendingPayments = payments.filter(
-    (payment) => payment.status === "pending"
-  ).length;
-
-  // Calculate total monthly obligations from active loans
-  const totalMonthlyDue = loans.reduce((sum, loan) => {
-    if (loan.isActive && loan.monthlyPayments.length > 0) {
-      return sum + (loan.totalDebt / loan.monthlyPayments.length);
-    }
-    return sum;
-  }, 0);
-
   // Calculate payment summary for the form
   const calculatePaymentSummary = () => {
     if (!paymentAmount || !selectedToken || !tokenRates[selectedToken]) {
@@ -885,7 +897,7 @@ export default function PaymentsPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-xl sm:text-2xl font-bold text-gray-900 break-words">
-                      ${totalPaid.toLocaleString()}
+                      ${thisMonthPaid.toLocaleString()}
                     </p>
                     <div className="flex items-center gap-1 text-purple-600 mt-2">
                       <DollarSign className="h-4 w-4" />
