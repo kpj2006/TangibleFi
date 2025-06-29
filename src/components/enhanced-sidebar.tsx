@@ -249,15 +249,6 @@ const sidebarItems: SidebarItem[] = [
 
   // Tools & Services
   {
-    id: "tokenize",
-    label: "Tokenize your RWA",
-    href: "/dashboard/assets/new",
-    icon: "Zap",
-    badge: "Hot",
-    badgeColor: "bg-yellow-500",
-    category: "tools",
-  },
-  {
     id: "calculator",
     label: "Loan Calculator",
     href: "/dashboard/calculator",

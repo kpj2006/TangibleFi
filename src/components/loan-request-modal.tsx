@@ -1155,6 +1155,8 @@ export default function LoanRequestModal({ children }: LoanRequestModalProps) {
         bufferAmount: parseFloat(ethers.formatUnits(bufferAmount, 18)),
         totalDebtWei: totalDebt,
         bufferAmountWei: bufferAmount,
+        interestRate: 0, // Not available in this context
+        calculatedMonthlyPayment: 0, // Not available in this context
       });
     } catch (error) {
       console.error("Error calculating loan terms:", error);
@@ -2422,32 +2424,28 @@ export default function LoanRequestModal({ children }: LoanRequestModalProps) {
           Select Collateral Asset
         </Label>
         <Select value={selectedAsset} onValueChange={setSelectedAsset}>
-          <SelectTrigger className="h-12">
-            <SelectValue placeholder="Choose an asset to use as collateral" />
-          </SelectTrigger>
-          <SelectContent>
-            {assets.map((asset) => (
-              <SelectItem key={asset.tokenId} value={asset.tokenId}>
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex-1">
-                    <p className="font-medium">{asset.name}</p>
-                    <p className="text-sm text-gray-500">{asset.assetType}</p>
-                    {debugMode && asset.activeLoanId && (
-                      <p className="text-xs text-orange-600">
-                        🔒 Loan: {asset.activeLoanId}
-                      </p>
-                    )}
+          <SelectTrigger className="h-auto min-h-[56px] min-w-[380px] w-full max-w-full py-2">
+            {(() => {
+              const asset = assets.find((a) => a.tokenId === selectedAsset);
+              if (!asset) {
+                return <SelectValue placeholder="Choose an asset to use as collateral" />;
+              }
+              return (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2 sm:gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{asset.name}</p>
+                    <p className="text-sm text-gray-500 truncate">{asset.assetType}</p>
                     {debugMode && asset.hasActiveInvestment && (
-                      <p className="text-xs text-blue-600">
+                      <p className="text-xs text-blue-600 truncate">
                         💰 Investment: ${asset.investmentAmount?.toFixed(2)}
                       </p>
                     )}
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold">
+                  <div className="flex flex-col items-end min-w-[120px]">
+                    <p className="font-semibold text-right break-words max-w-[160px]">
                       ${asset.currentValue.toLocaleString()}
                     </p>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-wrap justify-end mt-1">
                       <Badge variant="outline" className="text-xs">
                         {asset.network}
                       </Badge>
@@ -2468,17 +2466,65 @@ export default function LoanRequestModal({ children }: LoanRequestModalProps) {
                         </Badge>
                       )}
                     </div>
-                    {debugMode &&
-                      asset.interestRate &&
-                      asset.interestRate > 0 && (
-                        <p className="text-xs text-gray-500">
+                  </div>
+                </div>
+              );
+            })()}
+          </SelectTrigger>
+          <SelectContent>
+            <div className="max-h-72 overflow-y-auto min-w-[420px] w-full max-w-xl">
+              {assets.map((asset) => (
+                <SelectItem key={asset.tokenId} value={asset.tokenId} className="w-full">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2 sm:gap-4 p-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{asset.name}</p>
+                      <p className="text-sm text-gray-500 truncate">{asset.assetType}</p>
+                      {debugMode && asset.activeLoanId && (
+                        <p className="text-xs text-orange-600 truncate">
+                          🔒 Loan: {asset.activeLoanId}
+                        </p>
+                      )}
+                      {debugMode && asset.hasActiveInvestment && (
+                        <p className="text-xs text-blue-600 truncate">
+                          💰 Investment: ${asset.investmentAmount?.toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end min-w-[120px]">
+                      <p className="font-semibold text-right break-words max-w-[160px]">
+                        ${asset.currentValue.toLocaleString()}
+                      </p>
+                      <div className="flex gap-1 flex-wrap justify-end mt-1">
+                        <Badge variant="outline" className="text-xs">
+                          {asset.network}
+                        </Badge>
+                        {asset.isCollateralized && (
+                          <Badge
+                            variant="secondary"
+                            className="text-xs bg-orange-100 text-orange-800"
+                          >
+                            Collateral
+                          </Badge>
+                        )}
+                        {asset.canBeCollateralized && (
+                          <Badge
+                            variant="secondary"
+                            className="text-xs bg-green-100 text-green-800"
+                          >
+                            Available
+                          </Badge>
+                        )}
+                      </div>
+                      {debugMode && asset.interestRate && asset.interestRate > 0 && (
+                        <p className="text-xs text-gray-500 truncate mt-1">
                           Rate: {asset.interestRate.toFixed(2)}%
                         </p>
                       )}
+                    </div>
                   </div>
-                </div>
-              </SelectItem>
-            ))}
+                </SelectItem>
+              ))}
+            </div>
           </SelectContent>
         </Select>
 
@@ -3216,7 +3262,7 @@ export default function LoanRequestModal({ children }: LoanRequestModalProps) {
   );
 
   const renderConfirmStep = () => (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
       <div className="text-center space-y-4">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
           <CheckCircle className="h-8 w-8 text-green-600" />
