@@ -97,6 +97,13 @@ interface TokenInfo {
   rate?: number; // Exchange rate to USD
 }
 
+// Define a type for available networks for the selected token
+interface AvailableNetwork {
+  network: string;
+  networkConfig: any;
+  tokenAddress: string;
+}
+
 // Blockchain data fetching functions
 const getProvider = () => {
   if (typeof window !== 'undefined' && window.ethereum) {
@@ -343,6 +350,9 @@ export default function PaymentsPage() {
   const [selectedNetwork, setSelectedNetwork] = useState<string>("");
   const [paymentAmount, setPaymentAmount] = useState<string>("");
   const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const [availableNetworks, setAvailableNetworks] = useState<AvailableNetwork[]>([]);
+  const [selectedTokenAddress, setSelectedTokenAddress] = useState("");
+  const [selectedPoolAddress, setSelectedPoolAddress] = useState("");
 
   // Payment summary calculations
   const totalPaid = useMemo(() => {
@@ -451,6 +461,43 @@ export default function PaymentsPage() {
 
     loadBlockchainData();
   }, [router]);
+
+  useEffect(() => {
+    if (!selectedToken) {
+      setAvailableNetworks([]);
+      setSelectedNetwork("");
+      setSelectedTokenAddress("");
+      return;
+    }
+    // Find all networks where this token is available and has a valid address
+    const networks: AvailableNetwork[] = Object.entries(POPULAR_TOKENS)
+      .map(([network, tokens]) => {
+        const token = tokens.find(t => t.symbol === selectedToken);
+        return token && token.address ? {
+          network,
+          networkConfig: getNetworkConfig(SUPPORTED_NETWORKS[network]?.chainId),
+          tokenAddress: token.address,
+        } : null;
+      })
+      .filter((n): n is AvailableNetwork => !!n && !!n.tokenAddress && n.tokenAddress !== "<ADD_DAI_ADDRESS_HERE>" && n.tokenAddress !== "<ADD_USDC_ADDRESS_HERE>");
+    setAvailableNetworks(networks);
+    // Always reset to the first network for this token
+    if (networks.length > 0) {
+      setSelectedNetwork(networks[0].network);
+      setSelectedTokenAddress(networks[0].tokenAddress);
+    } else {
+      setSelectedNetwork("");
+      setSelectedTokenAddress("");
+    }
+  }, [selectedToken]);
+
+  useEffect(() => {
+    if (!selectedNetwork) return;
+    const network = availableNetworks.find(n => n.network === selectedNetwork);
+    if (network) {
+      setSelectedTokenAddress(network.tokenAddress);
+    }
+  }, [selectedNetwork, availableNetworks]);
 
   const handlePayment = async (formData: FormData) => {
     if (!userAddress || !isWalletConnected) {
@@ -1083,21 +1130,26 @@ export default function PaymentsPage() {
                         >
                           Blockchain Network *
                         </Label>
-                        <Select name="blockchain" required value={selectedNetwork} disabled>
+                        <Select
+                          name="blockchain"
+                          required
+                          value={selectedNetwork}
+                          onValueChange={setSelectedNetwork}
+                        >
                           <SelectTrigger className="h-12 border-gray-200 bg-gray-50">
                             <SelectValue placeholder="Select network" />
                           </SelectTrigger>
                           <SelectContent>
-                            {Object.entries(SUPPORTED_NETWORKS).map(([key, network]) => (
-                              <SelectItem key={key} value={network.name}>
-                                {network.name}
+                            {availableNetworks.map((n) => (
+                              <SelectItem key={n.network} value={n.network}>
+                                {n.networkConfig?.name || n.network}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        {networkInfo && (
-                          <p className="text-xs text-muted-foreground">
-                            Connected to: {networkInfo.name} (Chain ID: {networkInfo.chainId})
+                        {selectedTokenAddress && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Token Address: <span className="font-mono">{selectedTokenAddress}</span>
                           </p>
                         )}
                       </div>
@@ -1137,14 +1189,14 @@ export default function PaymentsPage() {
                         </div>
                       </div>
 
-                      <SubmitButton
+                      <Button
+                        type="submit"
                         className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                         size="lg"
-                        pendingText="Processing Payment..."
                       >
                         <ArrowUpRight className="h-4 w-4 mr-2" />
                         Process Payment
-                      </SubmitButton>
+                      </Button>
                     </form>
                     )}
                   </CardContent>

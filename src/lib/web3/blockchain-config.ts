@@ -198,19 +198,119 @@ export const POPULAR_TOKENS: Record<
     ],
     sepolia: [
         {
-            address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+            address: "0xf661043d9Bc1ef2169Ef90ad3b2285Cf8Bfc0AE2",
             symbol: "USDC",
             name: "Test USD Coin",
             decimals: 6,
         },
         {
-            address: "0xF2aAFEf1E47dA2B259CA1B8bA9F1FCEedfba3F40",
+            address: "0xf2aafef1e47da2b259ca1b8ba9f1fceedfba3f40",
             symbol: "USDT",
             name: "Test Tether USD",
             decimals: 18,
         },
         {
-            address: "0xFF34B3d4Aee8ddCd6F9AFFFB6Fe49bD371b8a357",
+            address: "0x64e5603850e87adc708620b13b5a4375a65bbf0e",
+            symbol: "DAI",
+            name: "Test Dai Stablecoin",
+            decimals: 18,
+        },
+    ],
+    avalancheFuji: [
+        {
+            address: "0x7bA2e5c37C4151d654Fcc4b41ffF3Fe693c23852",
+            symbol: "USDC",
+            name: "Test USD Coin",
+            decimals: 6,
+        },
+        {
+            address: "0x8dd59e32c10720fb7920dbac0d227aada70a2ed2",
+            symbol: "USDT",
+            name: "Test Tether USD",
+            decimals: 18,
+        },
+        {
+            address: "0xa7c3231e634cb55ca899667c0d21df1ba48df313",
+            symbol: "DAI",
+            name: "Test Dai Stablecoin",
+            decimals: 18,
+        },
+    ],
+    arbitrumSepolia: [
+        {
+            address: "<ADD_USDC_ADDRESS_HERE>",
+            symbol: "USDC",
+            name: "Test USD Coin",
+            decimals: 6,
+        },
+        {
+            address: "0xfcb2e48fadada921c91767d3f2befd8f08e34557",
+            symbol: "USDT",
+            name: "Test Tether USD",
+            decimals: 18,
+        },
+        {
+            address: "0xfbfa26cb332e2a7dc7c5c203f93698e75b4f4a12",
+            symbol: "DAI",
+            name: "Test Dai Stablecoin",
+            decimals: 18,
+        },
+    ],
+    baseSepolia: [
+        {
+            address: "<ADD_USDC_ADDRESS_HERE>",
+            symbol: "USDC",
+            name: "Test USD Coin",
+            decimals: 6,
+        },
+        {
+            address: "0x20d644b679d123f42b8325c6b1d73ef7845a72cf",
+            symbol: "USDT",
+            name: "Test Tether USD",
+            decimals: 18,
+        },
+        {
+            address: "<ADD_DAI_ADDRESS_HERE>",
+            symbol: "DAI",
+            name: "Test Dai Stablecoin",
+            decimals: 18,
+        },
+    ],
+    opSepolia: [
+        {
+            address: "<ADD_USDC_ADDRESS_HERE>",
+            symbol: "USDC",
+            name: "Test USD Coin",
+            decimals: 6,
+        },
+        {
+            address: "0x7ea8f579efded7033bb4afe2032d1e70f251e4d2",
+            symbol: "USDT",
+            name: "Test Tether USD",
+            decimals: 18,
+        },
+        {
+            address: "<ADD_DAI_ADDRESS_HERE>",
+            symbol: "DAI",
+            name: "Test Dai Stablecoin",
+            decimals: 18,
+        },
+    ],
+    unichainTestnet: [
+        {
+            address: "<ADD_USDC_ADDRESS_HERE>",
+            symbol: "USDC",
+            name: "Test USD Coin",
+            decimals: 6,
+        },
+        {
+            address: "0x65ea2d9e8e4e982ba00085d0d51a48390df294ee",
+            symbol: "USDT",
+            name: "Test Tether USD",
+            decimals: 18,
+        },
+        {
+            address: "0xd991d7c91013c9d9db01f8197682cb660ca1c23d",
             symbol: "DAI",
             name: "Test Dai Stablecoin",
             decimals: 18,
