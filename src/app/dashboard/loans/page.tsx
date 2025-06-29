@@ -662,18 +662,6 @@ export default function BlockchainLoansPage() {
                                     <p className="font-bold text-2xl text-gray-900 mb-3">
                                       {formatCompactNumber(loan.monthlyPayment)}
                                     </p>
-                                    <Button
-                                      size="lg"
-                                      variant="outline"
-                                      className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 shadow-sm hover:shadow-md transition-all duration-200"
-                                      asChild
-                                    >
-                                      <Link
-                                        href={`/dashboard/payments?loan=${loan.loanId}`}
-                                      >
-                                        Make Payment
-                                      </Link>
-                                    </Button>
                                   </div>
                                 </div>
                               </div>

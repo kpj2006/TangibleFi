@@ -500,6 +500,16 @@ export default function PaymentsPage() {
   }, [selectedNetwork, availableNetworks]);
 
   const handlePayment = async (formData: FormData) => {
+    console.log("handlePayment called", Object.fromEntries(formData.entries()), {
+      userAddress,
+      isWalletConnected,
+      selectedLoanId,
+      selectedToken,
+      selectedNetwork,
+      paymentAmount,
+      availableTokens,
+      loans,
+    });
     if (!userAddress || !isWalletConnected) {
       toast({
         title: "Wallet Not Connected",
@@ -517,7 +527,7 @@ export default function PaymentsPage() {
     if (!loanId || !amount || !cryptoCurrency) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all required fields.",
+        description: `Please fill in all required fields. loanId: ${loanId}, amount: ${amount}, cryptoCurrency: ${cryptoCurrency}`,
         variant: "destructive",
       });
       return;
@@ -526,7 +536,12 @@ export default function PaymentsPage() {
     try {
       const provider = getProvider();
       if (!provider) {
-        throw new Error("No wallet provider found");
+        toast({
+          title: "No wallet provider found",
+          description: "Please connect your wallet.",
+          variant: "destructive",
+        });
+        return;
       }
 
       const signer = await provider.getSigner();
@@ -534,7 +549,12 @@ export default function PaymentsPage() {
       const networkConfig = getNetworkConfig(Number(network.chainId));
       
       if (!networkConfig?.contracts?.diamond) {
-        throw new Error("No contract address found for this network");
+        toast({
+          title: "No contract address found for this network",
+          description: `Network: ${network.chainId}`,
+          variant: "destructive",
+        });
+        return;
       }
 
       const automationLoanContract = getContract(
@@ -546,7 +566,12 @@ export default function PaymentsPage() {
       // Get the selected token details
       const selectedTokenInfo = availableTokens.find(t => t.symbol === cryptoCurrency);
       if (!selectedTokenInfo) {
-        throw new Error("Selected token not found");
+        toast({
+          title: "Selected token not found",
+          description: `Token: ${cryptoCurrency}`,
+          variant: "destructive",
+        });
+        return;
       }
 
       // Calculate payment amount in token units
@@ -560,7 +585,7 @@ export default function PaymentsPage() {
       if (!selectedLoan) {
         toast({
           title: "Invalid Loan",
-          description: "Selected loan not found or not active.",
+          description: `Selected loan not found or not active. loanId: ${loanId}`,
           variant: "destructive",
         });
         return;
@@ -576,7 +601,7 @@ export default function PaymentsPage() {
       if (amount <= 0 || isNaN(amount)) {
         toast({
           title: "Invalid Amount",
-          description: "Payment amount must be greater than zero.",
+          description: `Payment amount must be greater than zero. amount: ${amount}`,
           variant: "destructive",
         });
         return;
@@ -960,7 +985,7 @@ export default function PaymentsPage() {
                   <CardHeader className="border-b border-gray-100">
                     <CardTitle className="flex items-center gap-2 text-xl">
                       <Wallet className="h-6 w-6 text-blue-600" />
-                      Make Payment
+                      Calculate Payment
                     </CardTitle>
                     <CardDescription className="text-base">
                       Process a loan payment using cryptocurrency
@@ -1050,41 +1075,25 @@ export default function PaymentsPage() {
                         </Select>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-3">
-                          <Label
-                            htmlFor="amount"
-                            className="text-sm font-semibold text-gray-700"
-                          >
-                            Payment Amount *
-                          </Label>
-                          <Input
-                            id="amount"
-                            name="amount"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            placeholder="2500.00"
-                            required
-                            value={paymentAmount}
-                            onChange={(e) => setPaymentAmount(e.target.value)}
-                            className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20"
-                          />
-                        </div>
-                        <div className="space-y-3">
-                          <Label className="text-sm font-semibold text-gray-700">
-                            Payment Type *
-                          </Label>
-                          <Select name="payment_type" required defaultValue="monthly">
-                            <SelectTrigger className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="monthly">Monthly Payment</SelectItem>
-                              <SelectItem value="full">Full Repayment</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                      <div className="space-y-3">
+                        <Label
+                          htmlFor="amount"
+                          className="text-sm font-semibold text-gray-700"
+                        >
+                          Payment Amount *
+                        </Label>
+                        <Input
+                          id="amount"
+                          name="amount"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="2500.00"
+                          required
+                          value={paymentAmount}
+                          onChange={(e) => setPaymentAmount(e.target.value)}
+                          className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 w-full"
+                        />
                       </div>
 
                       <div className="space-y-3">
@@ -1188,15 +1197,6 @@ export default function PaymentsPage() {
                           </span>
                         </div>
                       </div>
-
-                      <Button
-                        type="submit"
-                        className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
-                        size="lg"
-                      >
-                        <ArrowUpRight className="h-4 w-4 mr-2" />
-                        Process Payment
-                      </Button>
                     </form>
                     )}
                   </CardContent>
@@ -1283,16 +1283,6 @@ export default function PaymentsPage() {
                                   </p>
                                 </div>
                               </div>
-                              <Button
-                                size="lg"
-                                className="w-full"
-                                variant="outline"
-                                asChild
-                              >
-                                <a href={`/dashboard/payments?loan=${loan.loanId}`}>
-                                  {isOverdue ? "Pay Now (Overdue)" : "Pay Now"}
-                                </a>
-                              </Button>
                             </div>
                           );
                         })}
