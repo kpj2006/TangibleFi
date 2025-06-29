@@ -1,14 +1,16 @@
 const { ethers } = require("ethers");
 const fs = require("fs");
 const path = require("path");
- require("dotenv").config({ path: path.resolve(__dirname, "../../../../.env.local") });
+require("dotenv").config({
+  path: path.resolve(__dirname, "../../../../.env.local"),
+});
 
 // Keep a cache of loaded artifacts
 const artifactCache = new Map();
 
 // Load ABIs (You'll need to compile your contracts first and have the ABIs available)
 // Helper function to load contract artifacts
-function loadArtifact(contractName) 
+function loadArtifact(contractName) {
   // Return from cache if available
   if (artifactCache.has(contractName)) {
     return artifactCache.get(contractName);
@@ -184,11 +186,11 @@ async function main() {
     }
 
     // Deploy AutomationLoan
-   const AutomationLoan = await deployContract(
-  "AutomationLoan",
-  [Diamond.target], // Only one argument!
-  deployer
-);
+    const AutomationLoan = await deployContract(
+      "AutomationLoan",
+      [Diamond.target], // Only one argument!
+      deployer
+    );
     console.log("AutomationLoan deployed to:", AutomationLoan.target);
 
     // Process facets and check for selectors
