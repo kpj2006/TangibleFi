@@ -1140,7 +1140,7 @@ export default function LoanRequestModal({ children }: LoanRequestModalProps) {
 
       // Convert months to seconds for contract
       const durationInSeconds = parseInt(termMonths) * 30 * 24 * 60 * 60;
-      // Convert amount to proper decimals (usually 6 for USDC/USDT)
+      // Convert amount to proper decimals (usually 18 for USDC/USDT)
       const amountInWei = ethers.parseUnits(amount, 18);
 
       // Get loan terms from contract
@@ -1283,38 +1283,115 @@ export default function LoanRequestModal({ children }: LoanRequestModalProps) {
     if (
       !wallet.address ||
       !viewFacetLoanTerms ||
-      !networkConfig?.contracts?.diamond
-    )
+      !networkConfig?.contracts?.diamond ||
+      !selectedCurrencyData
+    ) {
+      toast.error("Missing required data for token approval");
       return;
+    }
 
     setApproving(true);
 
     try {
-      // We need to approve: loan amount + (2 * buffer amount)
-      // Buffer amount is returned to user if loan is repaid successfully
-      const requiredAllowance =
-        viewFacetLoanTerms.totalDebtWei +
-        viewFacetLoanTerms.bufferAmountWei * 2n;
+      // Initialize provider safely
+      let provider;
+      if (!window.ethereum) {
+        throw new Error("MetaMask not installed");
+      }
+      provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
 
       // Create ERC20 contract instance
       const tokenContract = new ethers.Contract(
         selectedCurrencyData.address,
         ERC20_ABI,
-        new ethers.BrowserProvider(wallet.provider)
+        signer
       );
 
-      // Approve the exact amount needed
-      const tx = await tokenContract.approve(
-        networkConfig.contracts.diamond,
-        requiredAllowance
+      // Calculate total required allowance in Wei exactly matching contract logic
+      // Contract checks: token.allowance(borrower, address(this)) < (amount + bufferAmount + bufferAmount)
+      const loanAmountWei = ethers.parseUnits(
+        loanAmount,
+        selectedCurrencyData.decimals
+      );
+      const bufferAmountWei = viewFacetLoanTerms.bufferAmountWei;
+
+      // IMPORTANT: Match the contract exactly - amount + bufferAmount + bufferAmount
+      const requiredAllowance =
+        loanAmountWei + bufferAmountWei + bufferAmountWei;
+
+      // Check current allowance
+      const currentAllowance = await tokenContract.allowance(
+        wallet.address,
+        networkConfig.contracts.diamond
       );
 
-      await tx.wait();
-      setApprovalComplete(true);
-      toast.success("Token approval successful!");
-    } catch (error) {
+      // Format amounts for debugging (convert from Wei to token units)
+      const formatAmount = (amount) =>
+        ethers.formatUnits(amount, selectedCurrencyData.decimals);
+
+      debugLog("Token approval check with contract-matching logic", {
+        loanAmountWei: formatAmount(loanAmountWei),
+        bufferAmountWei: formatAmount(bufferAmountWei),
+        doubleBufferLogic: `${formatAmount(loanAmountWei)} + ${formatAmount(bufferAmountWei)} + ${formatAmount(bufferAmountWei)}`,
+        currentAllowance: formatAmount(currentAllowance),
+        requiredAllowance: formatAmount(requiredAllowance),
+        difference: formatAmount(requiredAllowance - currentAllowance),
+        raw: {
+          currentAllowance: currentAllowance.toString(),
+          requiredAllowance: requiredAllowance.toString(),
+          difference: (requiredAllowance - currentAllowance).toString(),
+        },
+      });
+
+      // Only approve if current allowance is insufficient
+      if (currentAllowance < requiredAllowance) {
+        // For safety, use a more generous amount to prevent any issues
+        // Always approve the full amount needed rather than just the difference
+        const approvalAmount =
+          requiredAllowance +
+          (withPrecisionBuffer ? bufferAmountWei : BigInt(0));
+
+        toast.info(
+          `Approving ${formatAmount(approvalAmount)} ${selectedCurrencyData.symbol} tokens...`
+        );
+
+        // Approve the tokens with the full amount needed
+        const tx = await tokenContract.approve(
+          networkConfig.contracts.diamond,
+          approvalAmount
+        );
+
+        await tx.wait();
+        setApprovalComplete(true);
+        toast.success(
+          `Successfully approved ${formatAmount(approvalAmount)} ${selectedCurrencyData.symbol}!`
+        );
+      } else {
+        const formattedAllowance = formatAmount(currentAllowance);
+        debugLog("Sufficient allowance already exists", {
+          currentAllowance: formattedAllowance,
+          requiredAllowance: formatAmount(requiredAllowance),
+          symbol: selectedCurrencyData.symbol,
+        });
+        setApprovalComplete(true);
+        toast.success(
+          `Already approved ${formattedAllowance} ${selectedCurrencyData.symbol}!`
+        );
+      }
+    } catch (error: any) {
       console.error("Approval error:", error);
-      toast.error("Failed to approve tokens");
+      let errorMessage = "Failed to approve tokens";
+
+      if (error?.message?.includes("rejected")) {
+        errorMessage = "User rejected the approval request";
+      } else if (error?.message?.includes("MetaMask")) {
+        errorMessage = "Please install MetaMask or use a supported wallet";
+      } else if (error?.message?.includes("insufficient")) {
+        errorMessage = `Insufficient ${selectedCurrencyData.symbol} balance for approval`;
+      }
+
+      toast.error(errorMessage);
     } finally {
       setApproving(false);
     }
