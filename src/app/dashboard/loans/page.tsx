@@ -65,6 +65,7 @@ interface BlockchainLoan {
   paymentProgress: number;
   assetName?: string;
   assetType?: string;
+  status?: string;
 }
 
 function getStatusBadge(status: string) {
@@ -310,6 +311,7 @@ export default function BlockchainLoansPage() {
             paymentProgress,
             assetName,
             assetType,
+            status: loanData.status,
           };
 
           return loan;
@@ -540,7 +542,7 @@ export default function BlockchainLoansPage() {
                                     <CardTitle className="text-2xl bg-gradient-to-r from-gray-900 to-blue-800 bg-clip-text text-transparent">
                                       {formatCompactNumber(loan.loanAmount)} Loan
                                     </CardTitle>
-                                    {getStatusBadge(loan.isActive ? "active" : "inactive")}
+                                    {getStatusBadge(loan.isActive === true ? "active" : loan.status || "inactive")}
                                     <Badge
                                       variant="outline"
                                       className="text-xs bg-gray-50/80 text-gray-700 border-gray-200"
@@ -674,16 +676,6 @@ export default function BlockchainLoansPage() {
                               </div>
 
                               <div className="text-sm text-muted-foreground pt-2 border-t border-gray-200">
-                                Loan originated{" "}
-                                {new Date(loan.startTime * 1000).toLocaleDateString(
-                                  "en-US",
-                                  {
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric",
-                                  }
-                                )}
-                                {" • "}
                                 Loan ID: {loan.loanId}
                                 {" • "}
                                 Token ID: {loan.userAccountTokenId}
