@@ -61,6 +61,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ethers } from "ethers";
+import ViewFacetABI from "@/contracts/abis/ViewFacet.json";
+import AuthUserABI from "@/contracts/abis/AuthUser.json";
+import { SUPPORTED_NETWORKS } from "@/lib/web3/blockchain-config";
 import { useBlockchainData } from "@/hooks/useBlockchainData";
 import { usePortfolioData } from "@/hooks/use-portfolio-data";
 import { useMarketData } from "@/hooks/use-market-data";
@@ -217,6 +221,11 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showRefreshed, setShowRefreshed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string>("");
+  const [networkConfig, setNetworkConfig] = useState(SUPPORTED_NETWORKS.sepolia);
+  const [assetLoading, setAssetLoading] = useState(true);
 
   // Initialize Supabase client
   const supabase = createClient();
@@ -259,6 +268,161 @@ export default function Dashboard() {
     getUser();
   }, [supabase]);
 
+  // Fetch wallet and assets (same as /dashboard/assets)
+  useEffect(() => {
+    const checkWalletAndFetchAssets = async () => {
+      if (typeof window !== "undefined" && window.ethereum) {
+        try {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const accounts = await provider.listAccounts();
+          if (accounts.length > 0) {
+            setIsWalletConnected(true);
+            const userAddress = accounts[0].address;
+            setWalletAddress(userAddress);
+            // Get current network
+            const network = await provider.getNetwork();
+            const currentNetwork = Object.values(SUPPORTED_NETWORKS).find(
+              (net) => net.chainId === Number(network.chainId)
+            );
+            if (currentNetwork) setNetworkConfig(currentNetwork);
+            await fetchUserAssets(
+              userAddress,
+              provider,
+              currentNetwork || SUPPORTED_NETWORKS.sepolia
+            );
+          } else {
+            setAssets([]);
+            setAssetLoading(false);
+          }
+        } catch (error) {
+          setAssets([]);
+          setAssetLoading(false);
+        }
+      } else {
+        setAssets([]);
+        setAssetLoading(false);
+      }
+    };
+    checkWalletAndFetchAssets();
+  }, []);
+
+  const fetchUserAssets = async (
+    userAddress: string,
+    provider: any,
+    network: any
+  ) => {
+    setAssetLoading(true);
+    try {
+      if (!network.contracts?.diamond) {
+        setAssets([]);
+        setAssetLoading(false);
+        return;
+      }
+      const viewFacetContract = new ethers.Contract(
+        network.contracts.diamond,
+        ViewFacetABI,
+        provider
+      );
+      const authUserContract = new ethers.Contract(
+        network.contracts.diamond,
+        AuthUserABI,
+        provider
+      );
+      const nftIds = await viewFacetContract.getUserNFTs(userAddress);
+      if (nftIds.length === 0) {
+        setAssets([]);
+        setAssetLoading(false);
+        return;
+      }
+      const assetPromises = nftIds.map(async (tokenId: bigint) => {
+        try {
+          const [isAuth, amount, duration, rate, tokenAddress] =
+            await viewFacetContract.getUserNFTDetail(userAddress, tokenId);
+          let metadata = null;
+          let tokenURI = null;
+          try {
+            tokenURI = await authUserContract.tokenURI(tokenId);
+            if (tokenURI) {
+              if (tokenURI.startsWith("data:application/json;base64,")) {
+                const base64Data = tokenURI.split(",")[1];
+                metadata = JSON.parse(atob(base64Data));
+              } else if (tokenURI.startsWith("http")) {
+                try {
+                  const response = await fetch(tokenURI);
+                  metadata = await response.json();
+                } catch {}
+              }
+            }
+          } catch {}
+          let assetValue = Number(ethers.formatEther(amount));
+          let assetName, assetType, assetDescription, assetLocation;
+          if (metadata) {
+            assetName = metadata.name || `NFT Asset #${tokenId.toString()}`;
+            assetDescription = metadata.description || `Asset with ${assetValue} ETH value`;
+            const assetTypeFromMetadata = metadata.attributes?.find(
+              (attr: any) => attr.trait_type === "Asset Type" || attr.trait_type === "Type"
+            )?.value;
+            assetType = assetTypeFromMetadata?.toLowerCase()?.replace(/\s+/g, "_") || "other";
+            assetLocation = metadata.attributes?.find(
+              (attr: any) => attr.trait_type === "Location"
+            )?.value;
+            const assetValueFromMetadata = metadata.attributes?.find(
+              (attr: any) => attr.trait_type === "Value (USD)" || attr.trait_type === "Value"
+            )?.value;
+            if (assetValueFromMetadata) {
+              const metadataValue =
+                typeof assetValueFromMetadata === "number"
+                  ? assetValueFromMetadata
+                  : parseFloat(assetValueFromMetadata.toString()) || assetValue;
+              if (metadataValue > assetValue) assetValue = metadataValue;
+            }
+            const actualMintTime = new Date().toISOString();
+            const asset: Asset = {
+              id: tokenId.toString(),
+              name: assetName,
+              asset_type: assetType,
+              current_value: assetValue,
+              original_value: assetValue,
+              verification_status: isAuth ? "verified" : "pending",
+              collateralization_status: amount > 0 ? "collateralized" : "available",
+              location: assetLocation || "On-chain",
+              blockchain: network.name,
+              created_at: actualMintTime,
+            };
+            return asset;
+          } else {
+            return null;
+          }
+        } catch {
+          return null;
+        }
+      });
+      const fetchedAssets = (await Promise.all(assetPromises)).filter(
+        Boolean
+      ) as Asset[];
+      setAssets(fetchedAssets);
+    } catch {
+      setAssets([]);
+    } finally {
+      setAssetLoading(false);
+    }
+  };
+
+  // Aggregate metrics from assets (like /dashboard/assets)
+  const totalValue = assets.reduce((sum, asset) => sum + asset.current_value, 0);
+  const totalAssets = assets.length;
+  const verifiedAssets = assets.filter(
+    (asset) => asset.verification_status === "verified"
+  ).length;
+  const collateralizedAssets = assets.filter(
+    (asset) => asset.collateralization_status === "collateralized"
+  ).length;
+  const nftsMinted = totalAssets;
+  // For demo, readyForLending = verifiedAssets
+  const readyForLending = verifiedAssets;
+  // For demo, activeLoans = collateralizedAssets
+  const activeLoans = collateralizedAssets;
+
   // Handle refresh action
   const handleRefresh = async () => {
     try {
@@ -288,7 +452,7 @@ export default function Dashboard() {
     setSearchQuery(query);
   };
 
-  if (isLoading) {
+  if (isLoading || assetLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -419,7 +583,7 @@ export default function Dashboard() {
               <span className="text-sm text-blue-100">Net Worth</span>
             </div>
             <div className="text-2xl font-bold">
-              ${netWorth.toLocaleString()}
+              ${totalValue.toLocaleString() || "0"}
             </div>
           </div>
           <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
@@ -427,14 +591,14 @@ export default function Dashboard() {
               <Building className="h-5 w-5 text-blue-300" />
               <span className="text-sm text-blue-100">Total Assets</span>
             </div>
-            <div className="text-2xl font-bold">{filteredAssets.length}</div>
+            <div className="text-2xl font-bold">{totalAssets || 0}</div>
           </div>
           <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircle className="h-5 w-5 text-green-300" />
               <span className="text-sm text-blue-100">Verified</span>
             </div>
-            <div className="text-2xl font-bold">{verifiedAssetsCount}</div>
+            <div className="text-2xl font-bold">{verifiedAssets || 0}</div>
           </div>
           <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
             <div className="flex items-center gap-2 mb-2">
@@ -642,6 +806,18 @@ export default function Dashboard() {
                 ))}
               </svg>
 
+              <div className="absolute top-4 left-4">
+                <div className="bg-white/90 backdrop-blur-sm rounded-lg p-3 border border-green-200 shadow-md">
+                  <p className="text-2xl font-bold text-green-600">
+                    ${totalValue.toLocaleString() || "0"}
+                  </p>
+                  <p className="text-sm text-green-700 flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" />
+                    Portfolio Value
+                  </p>
+                </div>
+              </div>
+
               {/* Chart Labels */}
               <div className="absolute bottom-4 left-4 right-4 flex justify-between text-xs text-gray-600">
                 <span>7d</span>
@@ -649,61 +825,66 @@ export default function Dashboard() {
                 <span>90d</span>
                 <span>1y</span>
               </div>
-
-              {/* Current Value Display */}
-              <div className="absolute top-4 left-4">
-                <div className="bg-white/90 backdrop-blur-sm rounded-lg p-3 border border-green-200 shadow-md">
-                  <p className="text-2xl font-bold text-green-600">
-                    ${netWorth.toLocaleString()}
-                  </p>
-                  <p className="text-sm text-green-700 flex items-center gap-1">
-                    {averageGrowth >= 0 ? (
-                      <TrendingUp className="h-3 w-3" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3" />
-                    )}
-                    Portfolio Value
-                  </p>
-                  {averageGrowth !== 0 && (
-                    <p
-                      className={`text-xs ${averageGrowth >= 0 ? "text-green-600" : "text-red-600"}`}
-                    >
-                      {averageGrowth >= 0 ? "+" : ""}
-                      {averageGrowth.toFixed(1)}% avg growth
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="grid grid-cols-3 gap-4 mt-6">
-              <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-600 font-medium">
-                  Total Assets
-                </p>
-                <p className="text-lg font-bold text-blue-900 flex items-center justify-center gap-1">
-                  <Building className="h-4 w-4" />
-                  {filteredAssets.length}
-                </p>
-              </div>
-              <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-200">
-                <p className="text-sm text-purple-600 font-medium">Verified</p>
-                <p className="text-lg font-bold text-purple-900">
-                  {verifiedAssetsCount}
-                </p>
-              </div>
-              <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
-                <p className="text-sm text-green-600 font-medium">
-                  Collateralized
-                </p>
-                <p className="text-lg font-bold text-green-900">
-                  {collateralizedAssetsCount}
-                </p>
-              </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Asset Status Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-full">
+                  <Network className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-blue-900">
+                    NFTs Minted
+                  </h4>
+                  <p className="text-sm text-blue-700">
+                    {nftsMinted || 0} assets tokenized
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-full">
+                  <ShieldCheck className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-green-900">
+                    Ready for Lending
+                  </h4>
+                  <p className="text-sm text-green-700">
+                    {readyForLending || 0} assets verified
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-yellow-100 rounded-full">
+                  <Trophy className="h-5 w-5 text-yellow-600" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-yellow-900">
+                    Active Loans
+                  </h4>
+                  <p className="text-sm text-yellow-700">
+                    {activeLoans || 0} loans outstanding
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Real-time Market Data */}
         <Card>
