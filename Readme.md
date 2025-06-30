@@ -526,7 +526,6 @@ NEXT_PUBLIC_APP_ENV=production
 
 # Use production RPC endpoints (with API keys)
 NEXT_PUBLIC_ETHEREUM_RPC_URL=your_production_ethereum_rpc
-NEXT_PUBLIC_POLYGON_RPC_URL=your_production_polygon_rpc
 NEXT_PUBLIC_ARBITRUM_RPC_URL=your_production_arbitrum_rpc
 NEXT_PUBLIC_OPTIMISM_RPC_URL=your_production_optimism_rpc
 NEXT_PUBLIC_AVALANCHE_RPC_URL=your_production_avalanche_rpc
@@ -1039,17 +1038,34 @@ export const BLOCKCHAIN_NETWORKS = {
       decimals: 18,
     },
   },
-  polygon: {
-    chainId: 137,
-    name: "Polygon Mainnet",
-    rpcUrl: process.env.NEXT_PUBLIC_POLYGON_RPC_URL,
-    blockExplorer: "https://polygonscan.com",
-    nativeCurrency: {
-      name: "Polygon",
-      symbol: "MATIC",
-      decimals: 18,
+  avalanche: {
+        chainId: 43113,
+        name: "Avalanche Fuji",
+        symbol: "AVAX",
+        rpcUrl: process.env.NEXT_PUBLIC_AVALANCHE_RPC_URL ||
+            "https://avalanche-fuji-c-chain-rpc.publicnode.com",
+        blockExplorer: "https://testnet.snowtrace.io/",
+        isTestnet: true,
+        nativeCurrency: {
+            name: "Avalanche",
+            symbol: "AVAX",
+            decimals: 18,
+        },  
     },
-  },
+  sepolia: {
+        chainId: 11155111,
+        name: "Ethereum Sepolia",
+        symbol: "SepoliaETH",
+        rpcUrl: process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL ||
+            "https://eth-sepolia.g.alchemy.com/v2/demo",
+        blockExplorer: "https://sepolia.etherscan.io",
+        isTestnet: true,
+        nativeCurrency: {
+            name: "Ethereum",
+            symbol: "ETH",
+            decimals: 18,
+        },
+   }
   arbitrum: {
     chainId: 42161,
     name: "Arbitrum One",
@@ -1061,7 +1077,48 @@ export const BLOCKCHAIN_NETWORKS = {
       decimals: 18,
     },
   },
-  // ... other networks
+  optimism: {
+        chainId: 11155420,
+        name: "Optimism Sepolia",
+        symbol: "OP",
+        rpcUrl: process.env.NEXT_PUBLIC_OPTIMISM_RPC_URL ||
+            "https://endpoints.omniatech.io/v1/op/sepolia/public",
+        blockExplorer: "https://sepolia-optimism.etherscan.io/",
+        isTestnet: true,
+        nativeCurrency: {
+            name: "Ethereum",
+            symbol: "ETH",
+            decimals: 18,
+        },
+    },
+    base: {
+        chainId: 84532,
+        name: "Base Sepolia",
+        symbol: "BASE",
+        rpcUrl: process.env.NEXT_PUBLIC_BASE_RPC_URL ||
+            "https://base-sepolia.drpc.org",
+        blockExplorer: "https://sepolia.basescan.org/",
+        isTestnet: true,
+        nativeCurrency: {
+            name: "Ethereum",
+            symbol: "ETH",
+            decimals: 18,
+        },
+    },
+    unichain: {
+        chainId: 1301,
+        name: "Unichain Sepolia",
+        symbol: "UNI",
+        rpcUrl: process.env.NEXT_PUBLIC_UNICHAIN_RPC_URL ||
+            "https://unichain-sepolia-rpc.publicnode.com",
+        blockExplorer: "https://unichain-sepolia.blockscout.com/",
+        isTestnet: true,
+        nativeCurrency: {
+            name: "Ethereum",
+            symbol: "ETH",
+            decimals: 18,
+        },
+    },
 };
 
 export const TESTNET_NETWORKS = {
@@ -1255,8 +1312,8 @@ class BlockchainDataService {
       totalValue: 125000.5,
       balances: [
         { network: "ethereum", balance: "2.5", symbol: "ETH" },
-        { network: "polygon", balance: "1000", symbol: "MATIC" },
         { network: "arbitrum", balance: "1.2", symbol: "ETH" },
+       //other chains..
       ],
       transactions: this.generateMockTransactions(),
       prices: {
@@ -1839,9 +1896,12 @@ export default function AssetPage({ params }: { params: { id: string } }) {
 
 ```typescript
 // Updated to use public RPC endpoints
-NEXT_PUBLIC_ETHEREUM_RPC_URL=https://cloudflare-eth.com
-NEXT_PUBLIC_POLYGON_RPC_URL=https://polygon-rpc.com
-NEXT_PUBLIC_ARBITRUM_RPC_URL=https://arb1.arbitrum.io/rpc
+NEXT_PUBLIC_ARBITRUM_RPC_URL=https://endpoints.omniatech.io/v1/arbitrum/sepolia/public
+NEXT_PUBLIC_OPTIMISM_RPC_URL=https://endpoints.omniatech.io/v1/op/sepolia/public
+NEXT_PUBLIC_AVALANCHE_RPC_URL=https://avalanche-fuji-c-chain-rpc.publicnode.com
+NEXT_PUBLIC_SEPOLIA_RPC_URL=https://rpc.sepolia.org
+NEXT_PUBLIC_BASE_RPC_URL=https://base-sepolia.drpc.org
+NEXT_PUBLIC_UNICHAIN_RPC_URL=https://unichain-sepolia-rpc.publicnode.com
 ```
 
 ### 5. API Rate Limiting Issues ✅
