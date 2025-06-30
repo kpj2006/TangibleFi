@@ -86,7 +86,7 @@ async function main() {
   if (typeof window === "undefined") {
     // For local development with hardhat/anvil
     provider = new ethers.JsonRpcProvider(
-      "https://eth-sepolia.g.alchemy.com/v2/NZ1c4Vu21IOmBWCLeIe2oVMFLgLbfMLs"
+      "https://avax-fuji.g.alchemy.com/v2/NZ1c4Vu21IOmBWCLeIe2oVMFLgLbfMLs"
     );
 
     // Use a private key (make sure this is not a real private key if committing code)

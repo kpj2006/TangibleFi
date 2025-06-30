@@ -88,6 +88,11 @@ export const SUPPORTED_NETWORKS: Record<string, NetworkConfig> = {
             symbol: "AVAX",
             decimals: 18,
         },
+        contracts: {
+            diamond: process.env.NEXT_PUBLIC_AVALANCHE_DIAMOND_ADDRESS,
+            // authUser: process.env.NEXT_PUBLIC_SEPOLIA_AUTH_USER_ADDRESS ||
+            //     "0xF21BaC0864E865B34d94F6D117B81f5Ff00a522B",
+        },
        
     },
     base: {
