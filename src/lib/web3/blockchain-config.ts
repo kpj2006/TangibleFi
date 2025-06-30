@@ -43,7 +43,7 @@ export const SUPPORTED_NETWORKS: Record<string, NetworkConfig> = {
         },
     },
     optimism: {
-        chainId: 11155420,
+        chainId: 5224473277236331295,
         name: "Optimism Sepolia",
         symbol: "OP",
         rpcUrl: process.env.NEXT_PUBLIC_OPTIMISM_RPC_URL ||
@@ -76,7 +76,7 @@ export const SUPPORTED_NETWORKS: Record<string, NetworkConfig> = {
         },
     },
     avalanche: {
-        chainId: 43113,
+        chainId: 14767482510784806043,
         name: "Avalanche Fuji",
         symbol: "AVAX",
         rpcUrl: process.env.NEXT_PUBLIC_AVALANCHE_RPC_URL ||
@@ -96,7 +96,7 @@ export const SUPPORTED_NETWORKS: Record<string, NetworkConfig> = {
        
     },
     base: {
-        chainId: 84532,
+        chainId: 10344971235874465080,
         name: "Base Sepolia",
         symbol: "BASE",
         rpcUrl: process.env.NEXT_PUBLIC_BASE_RPC_URL ||
@@ -110,7 +110,7 @@ export const SUPPORTED_NETWORKS: Record<string, NetworkConfig> = {
         },
     },
     unichain: {
-        chainId: 1301,
+        chainId: 14135854469784514356,
         name: "Unichain Sepolia",
         symbol: "UNI",
         rpcUrl: process.env.NEXT_PUBLIC_UNICHAIN_RPC_URL ||
